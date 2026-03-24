@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Cooks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-white p-6 md:p-12 min-h-screen">
+
+    <header class="flex justify-between items-center mb-10 max-w-6xl mx-auto">
+        <div class="flex items-center gap-2">
+      <span class="text-xl">✦</span>
+      <h1 class="text-xl font-bold">Food ordering system</h1>
+    </div>
+        <button onclick="window.location.href = '/public/index.html'" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
+            back to login
+        </button>
+    </header>
+
+    <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-white rounded-full p-1.5 gap-1 overflow-x-auto no-scrollbar w-full max-w-xl shadow-lg border border-gray-100">
+        <a href="/public/admin/Dashdoard_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          Dashboard
+        </a>
+        <a href="/public/admin/OrderNow_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          Order
+        </a>
+        <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+          style="background-color: #1ac8db">Cook
+        </span>
+        <a href="/public/admin/Menu_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          Menu
+        </a>
+      </div>
+    </div>
+    <main id="cook_display" class="grid grid-cols-1 mt-6 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-6xl mx-auto">
+        </main>
+
+    <div id="cookModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-5 backdrop-blur-[2px]">
+        <div class="bg-white rounded-[2rem] w-full max-w-md p-10 shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="modalTitle" class="text-2xl font-black text-gray-800">Add New Cook</h2>
+                <button onclick="toggleModal(false)" class="text-gray-400 hover:text-black text-3xl">&times;</button>
+            </div>
+            
+            <form id="cookForm" class="space-y-6">
+                <input type="hidden" id="editIndex" value="-1">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Firstname</label>
+                        <input type="text" id="firstName" required placeholder="Enter first name" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 focus:ring-2 focus:ring-cyan-400 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Surname</label>
+                        <input type="text" id="surName" required placeholder="Enter surname" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 focus:ring-2 focus:ring-cyan-400 transition-all outline-none">
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="button" onclick="toggleModal(false)" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition-all">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 bg-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-cyan-100 hover:bg-cyan-500 transition-all">Save Info</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // ข้อมูลเริ่มต้น
+    var cooks = [
+        { "id": "6731501122", "fname": "Firstname", "sname": "Surname" },
+        { "id": "6731503344", "fname": "Firstname", "sname": "Surname" },
+        { "id": "6731505566", "fname": "Firstname", "sname": "Surname" },
+        { "id": "6731507788", "fname": "Firstname", "sname": "Surname" },
+        { "id": "6731509900", "fname": "Firstname", "sname": "Surname" }
+    ];
+
+    showCooks();
+
+    function showCooks() {
+        let data = `
+        <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
+            <div class="flex flex-col items-center">
+                <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
+                <span class="text-green-500 font-semibold mt-2">Add New Menu</span>
+            </div>
+        </div>
+    `;
+
+        cooks.forEach(function (cook, index) {
+            data += `
+            <div class="bg-gray-50 p-8 rounded-3xl flex flex-col items-center justify-between text-center border border-transparent hover:border-gray-200 transition-all">
+                <div class="mb-6">
+                    <p class="text-gray-500 font-medium mb-4 text-lg tracking-wide">ID : ${cook.id}</p>
+                    <h3 class="text-2xl font-bold text-gray-800">${cook.fname} ${cook.sname}</h3>
+                </div>
+                <div class="flex gap-4 w-full">
+                    <button onclick="Disable(${index})" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition-colors shadow-sm">Disable</button>
+                    <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors shadow-sm">Edit</button>
+                </div>
+            </div>
+            `;
+        });
+        document.querySelector('#cook_display').innerHTML = data;
+    }
+
+    function toggleModal(isOpen) {
+        document.getElementById('cookModal').classList.toggle('hidden', !isOpen);
+    }
+
+    function openAddModal() {
+        document.getElementById('modalTitle').innerText = "Add New Cook";
+        document.getElementById('editIndex').value = "-1";
+        document.getElementById('cookForm').reset();
+        toggleModal(true);
+    }
+
+    // ระบบ Generate ID และ Save
+    document.getElementById('cookForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fname = document.getElementById('firstName').value;
+        const sname = document.getElementById('surName').value;
+        const index = document.getElementById('editIndex').value;
+        
+        if (index === "-1") {
+            // Generate ID ใหม่: 673150 + สุ่ม 4 ตัวท้าย
+            const newId = "673150" + Math.floor(1000 + Math.random() * 9000);
+            cooks.push({ "id": newId, "fname": fname, "sname": sname });
+        } else {
+            // แก้ไขคนเดิม
+            cooks[index].fname = fname;
+            cooks[index].sname = sname;
+        }
+        
+        showCooks();
+        toggleModal(false);
+    });
+
+    function Edit(index) {
+        const cook = cooks[index];
+        document.getElementById('modalTitle').innerText = "Edit Cook Info";
+        document.getElementById('firstName').value = cook.fname;
+        document.getElementById('surName').value = cook.sname;
+        document.getElementById('editIndex').value = index;
+        toggleModal(true);
+    }
+
+    function Disable(index) {
+        Swal.fire({
+            title: "Disable this cook?",
+            text: "You can re-enable them later.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            confirmButtonText: "Yes, disable",
+            borderRadius: '20px'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                cooks.splice(index, 1);
+                showCooks();
+            }
+        });
+    }
+
+    // ปิด Modal เมื่อคลิกข้างนอก
+    window.onclick = function(event) {
+        const modal = document.getElementById('cookModal');
+        if (event.target == modal) toggleModal(false);
+    }
+    </script>
+</body>
+</html>

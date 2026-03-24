@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Ordering System</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="bg-base-100 min-h-screen">
+    <!-- ══ NAVBAR ══ -->
+    <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
+      <div class="flex-1 flex items-center gap-2">
+        <span class="text-xl">✦</span>
+        <span class="font-bold text-base md:text-lg">Food ordering system</span>
+      </div>
+      <div class="flex-none">
+        <button
+          class="btn btn-outline btn-sm rounded-xl text-sm"
+         onclick="window.location.href = '/public/index.html'"
+        >
+          back to login
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ PILL TABS — centered ══ -->
+    <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
+        <a href="/public/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          menu
+        </a>
+        <a
+          href="/public/customers/capt_customers.html"
+          class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+        >
+          cart
+        </a>
+        <span
+          class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+          style="background-color: #1ac8db"
+        >
+          check
+        </span>
+        <a
+          href="/public/customers/PAYMENT.html"
+          class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+        >
+          payment
+        </a>
+      </div>
+    </div>
+
+    <!-- ══ CHECK CONTENT — centered ══ -->
+    <div class="flex flex-col items-center w-full px-4 mt-6 pb-16">
+      <div class="w-full max-w-lg">
+        <h2 class="text-2xl md:text-3xl font-bold mb-5">Waiting</h2>
+
+        <!-- Order list -->
+        <div id="orderList" class="flex flex-col gap-3">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TOAST ══ -->
+    <div id="toastArea" class="toast toast-bottom toast-center z-50"></div>
+
+    <script>
+      /* ── Demo orders
+     In production, replace this array with a fetch/WebSocket call to your backend.
+     Each item: { name: string, status: 'pending' | 'done' }
+  ── */
+      const orders = [
+        { name: "Fried Rice", status: "pending" },
+        { name: "Pad Thai", status: "pending" },
+        { name: "Omelet", status: "pending" },
+        { name: "Tom Yum Goong", status: "done" },
+      ];
+
+      /* ── Render ── */
+      function renderOrders() {
+        const el = document.getElementById("orderList");
+
+        if (!orders.length) {
+          el.innerHTML = `
+        <div class="text-center py-16 text-base-content/40">
+          <div class="text-5xl mb-3">📋</div>
+          <p class="text-sm">No orders yet</p>
+        </div>`;
+          return;
+        }
+
+        el.innerHTML = orders
+          .map(
+            (o) => `
+      <div class="card bg-base-200 rounded-2xl">
+        <div class="card-body flex-row items-center justify-between p-4 md:p-5">
+          <span class="font-semibold text-sm md:text-base">${o.name}</span>
+          <span class="font-semibold text-sm ${o.status === "done" ? "text-success" : "text-warning"}">
+            ${o.status === "done" ? "Done" : "Pending"}
+          </span>
+        </div>
+      </div>
+    `,
+          )
+          .join("");
+      }
+
+      window.onload = renderOrders;
+    </script>
+  </body>
+</html>

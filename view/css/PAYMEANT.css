@@ -1,0 +1,123 @@
+body {
+    font-family: 'Rockwell', 'Georgia', serif;
+}
+.navbar{
+    display: flex;
+    justify-content: right;
+}
+.btn-login {
+    background: #cc0000;
+    color: white;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 18px;
+    border: none;
+    text-decoration: none;
+}
+.text-box {
+    background: #F3F3F3; 
+    padding: 20px;          
+    width: 600px;           
+    margin: 20px auto 0;    
+    color: #191A23;   
+    line-height: 1.5;       
+}
+.text-box2 {
+    background: #F3F3F3;
+    padding: 20px;        
+    width: 600px;          
+    margin: 0 auto;      
+    color: #191A23;           
+    line-height: 1.5;       
+    display: flex;                 
+    justify-content: space-between;
+    height: 200px;
+}
+.checkout {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+.btn-checkout {
+    background: #1AC8DB;
+    color: white;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 18px;
+    border: none;
+    text-decoration: none; 
+    display: inline-block; 
+}
+.modal-overlay {
+    display: none; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000; 
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay:target {
+    display: flex;
+}
+
+.modal-content {
+    background-color: white;
+    width: 450px;
+    padding: 30px 40px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    color: #191A23;
+    text-align: center;
+    font-family: serif; 
+}
+
+.modal-content h2 {
+    text-align: left;
+    font-size: 32px;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.price-section {
+    margin-bottom: 40px;
+}
+
+.price-section h3 {
+    font-size: 35px;
+    margin: 10px 0;
+}
+
+.price-section p {
+    font-size: 40px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: space-around;
+}
+
+.btn-check {
+    background: #DB1A1D;
+    color: white;
+    border-radius: 20px;
+    padding: 10px 25px;
+    font-size: 20px;
+    text-decoration: none; 
+    font-weight: bold;
+}
+
+.btn-review {
+    background: #1ADB3D;
+    color: white;
+    border-radius: 20px;
+    padding: 10px 25px;
+    font-size: 20px;
+    text-decoration: none; 
+    font-weight: bold;
+}
+

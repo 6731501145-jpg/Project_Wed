@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>Food ordering</title>
+</head>
+<body>
+    <div class="min-h-screen bg-gray-100 p-8">
+  <div class="flex justify-between items-center mb-8">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">✦</span>
+      <h1 class="text-xl font-bold">Food ordering system</h1>
+    </div>
+    <button onclick="window.location.href = '/public/index.html'" class="border border-gray-400 px-4 py-1 rounded-md text-sm hover:bg-gray-200">
+      back to login
+    </button>
+  </div>
+     <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
+        <a href="/public/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          menu
+        </a>
+        <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+          style="background-color: #1ac8db">cart
+        </span>
+        <a href="/public/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          check
+        </a>
+        <a href="/public/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          payment
+        </a>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center w-full px-4 mt-6 pb-16">
+      <div class="w-full max-w-lg">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">My Basket</h1>
+        <p class="text-sm md:text-base font-medium text-gray-500">Review your order</p>
+        
+        <div id="orderList" class="flex flex-col gap-3">
+
+        </div>
+      </div>
+    </div>
+
+  
+<div class="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-white via-white/80 to-transparent z-50">
+  <div class="max-w-4xl mx-auto flex justify-center">
+    
+    <button class="w-full md:w-64 bg-[#6EE76E] hover:bg-[#5cd65c] text-white py-3 rounded-full text-xl font-bold shadow-md flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 active:shadow-inner">
+      ORDER
+      <span class="text-2xl">→</span>
+    </button>
+    
+  </div>
+</div>
+ 
+</div>
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all">
+    <div class="text-center">
+      <div class="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span class="text-red-500 text-4xl">🗑️</span>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-900 mb-2">Remove Item?</h3>
+      <p class="text-gray-500 mb-8 px-4">Are you sure you want to remove this item from your cart?</p>
+      <div class="flex flex-col gap-3">
+        <button id="confirmDeleteBtn" class="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-100 active:scale-95">
+          Remove it
+        </button>
+        <button onclick="closeModal()" class="w-full py-3 text-gray-400 font-semibold hover:text-gray-600 transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var products = [
+    { "name": "Pad Thai", "price": 50, "amount": "2" },
+    { "name": "Fried Rice", "price": 45, "amount": "2" },
+    { "name": "Omelet", "price": 40, "amount": "2" },
+  ];
+  showProduct();
+ function showProduct() {
+  let data = '';
+  products.forEach(function (product, index) {
+    data += `
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-50 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 gap-3 mb-3">
+      <div class="flex-1 w-full flex items-center">
+        <span class="text-base md:text-lg font-medium text-gray-800">${product.name}</span>
+      </div>
+      <div class="flex items-center justify-between md:justify-end w-full md:w-auto gap-4 md:gap-8">
+        <div class="flex items-baseline gap-1">
+          <span class="text-lg md:text-xl font-bold text-cyan-500">${(product.price * product.amount).toLocaleString()}</span>
+          <span class="text-sm font-medium">THB</span>
+        </div>
+        
+        <div class="bg-white rounded-full px-4 py-2 md:px-5 md:py-2.5 flex items-center justify-center gap-4 md:gap-5 shadow-inner border border-gray-100">
+          <button onclick="changeCount(${index}, -1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">-</button>
+          <span class="font-bold text-sm md:text-lg w-4 md:w-6 text-center">${product.amount}</span>
+          <button onclick="changeCount(${index}, 1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">+</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.querySelector('#orderList').innerHTML = data;
+}
+let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
+
+function changeCount(index, amount) {
+    let currentCount = parseInt(products[index].amount);
+    let newCount = currentCount + amount;
+
+    if (newCount <= 0) {
+        openModal(index);
+    } else {
+        products[index].amount = newCount;
+        showProduct();
+    }
+}
+
+// ฟังก์ชันเปิดป๊อปอัพ
+function openModal(index) {
+    indexToDelete = index; // จำไว้ว่าจะลบตัวไหน
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+// ฟังก์ชันปิดป๊อปอัพ
+function closeModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+// เมื่อกดปุ่ม "ลบทันที" ในป๊อปอัพ
+document.getElementById('confirmDeleteBtn').onclick = function() {
+    if (indexToDelete !== null) {
+        products.splice(indexToDelete, 1); // ลบออกจาก Array
+        closeModal(); // ปิดป๊อปอัพ
+        showProduct(); // วาดหน้าจอใหม่
+    }
+};
+</script>
+</body>
+</html>

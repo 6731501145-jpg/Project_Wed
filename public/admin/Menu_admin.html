@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Menu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 md:p-12 min-h-screen">
+
+    <header class="flex justify-between items-center mb-10 max-w-6xl mx-auto">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">✦</span>
+            <h1 class="text-xl font-bold">Food ordering system</h1>
+        </div>
+        <button onclick="window.location.href = '/public/index.html'" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
+            back to login
+        </button>
+    </header>
+
+    <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-white rounded-full p-1.5 gap-1 overflow-x-auto no-scrollbar w-full max-w-xl shadow-lg border border-gray-100">
+        <a href="/public/admin/Dashdoard_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
+          Dashboard
+        </a>
+        <a href="/public/admin/OrderNow_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
+          Order
+        </a>
+        <a href="/public/admin/lisCook_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
+          Cooks
+        </a>
+        <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+          style="background-color: #1ac8db">Menu
+        </span>
+      </div>
+    </div>
+
+    <main id="product_display" class="grid grid-cols-1 mt-10 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        </main>
+
+    <div id="addMenuModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5 backdrop-blur-sm">
+        <div class="bg-white rounded-[2rem] w-full max-w-lg p-10 shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="modalTitle" class="text-3xl font-black text-gray-800">Add New Item</h2>
+                <button onclick="toggleModal(false)" class="text-gray-400 hover:text-black text-2xl">&times;</button>
+            </div>
+            
+            <form id="menuForm" class="space-y-6">
+                <input type="hidden" id="editIndex" value="-1">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Menu Name</label>
+                        <input type="text" id="menuName" required placeholder="e.g. Tom Yum Goong" class="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Price (baht)</label>
+                        <input type="number" id="menuPrice" required placeholder="0.00" class="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-400 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="button" onclick="toggleModal(false)" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 bg-cyan-400 text-white rounded-2xl font-bold shadow-lg hover:bg-cyan-500">Save Menu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+       // 1. ประกาศตัวแปร Data
+var defaultProducts = [
+    { "name": "Pad Thai", "price": 50, "image": "pad-thai.png" },
+    { "name": "Fried Rice", "price": 45, "image": "fried-rice.png" },
+    { "name": "Omelet", "price": 40, "image": "omelet.png" },
+    { "name": "Green Curry", "price": 60, "image": "green-curry.png" },
+    { "name": "Tom Yum Soup", "price": 70, "image": "tom-yum-soup.png" },
+    { "name": "Pad Krapow", "price": 45, "image": "pad-krapow.png" }
+];
+
+var products = [...defaultProducts];
+
+// 2. ฟังก์ชันแสดงผล (แก้ไขลำดับใหม่)
+function showProduct() {
+    let container = document.querySelector('#product_display');
+    if (!container) return;
+
+    // เริ่มต้นตัวแปร data ด้วยปุ่ม "Add New Menu"
+    let data = `
+        <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
+            <div class="flex flex-col items-center">
+                <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
+                <span class="text-green-500 font-semibold mt-2">Add New Menu</span>
+            </div>
+        </div>
+    `;
+
+    // วน Loop เอาเมนูจาก products มาบวกเพิ่มเข้าไปใน data
+    products.forEach(function (product, index) {
+        data += `
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div>
+                <div class="bg-slate-200 h-44 rounded-2xl flex justify-center items-center mb-5 overflow-hidden">
+                    <img class="w-full h-full object-cover" src="/view/${product.image}" 
+                         onerror="this.src='https://placehold.co/400x300?text=${encodeURIComponent(product.name)}'" alt="${product.name}">
+                </div>
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800">${product.name}</span>
+                    <span class="text-lg font-black text-gray-900">${product.price} <small class="text-xs text-gray-400">THB</small></span>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="Disable(${index})" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition-colors">Disable</button>
+                <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors">Edit</button>
+            </div>
+        </div>
+        `;
+    });
+
+    // แสดงผลข้อมูลทั้งหมดที่รวมเสร็จแล้ว
+    container.innerHTML = data;
+}
+
+// 3. เรียกทำงานครั้งแรก
+showProduct();
+
+// --- ฟังก์ชันอื่นๆ (เหมือนเดิม) ---
+function toggleModal(isOpen) {
+    document.getElementById('addMenuModal').classList.toggle('hidden', !isOpen);
+}
+
+function openAddModal() {
+    document.getElementById('modalTitle').innerText = "Add New Item";
+    document.getElementById('editIndex').value = "-1";
+    document.getElementById('menuForm').reset();
+    toggleModal(true);
+}
+
+document.getElementById('menuForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('menuName').value;
+    const price = document.getElementById('menuPrice').value;
+    const index = document.getElementById('editIndex').value;
+    
+    if (index === "-1") {
+        products.unshift({ "name": name, "price": price, "image": "default.png" });
+    } else {
+        products[index].name = name;
+        products[index].price = price;
+    }
+    
+    showProduct();
+    toggleModal(false);
+});
+
+function Disable(index) {
+    Swal.fire({
+        title: "Are you sure?",
+        text: "Delete this menu item?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#ef4444",
+        confirmButtonText: "Yes, delete it!"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            products.splice(index, 1);
+            showProduct();
+        }
+    });
+}
+
+function Edit(index) {
+    const product = products[index];
+    document.getElementById('modalTitle').innerText = "Edit Item";
+    document.getElementById('menuName').value = product.name;
+    document.getElementById('menuPrice').value = product.price;
+    document.getElementById('editIndex').value = index;
+    toggleModal(true);
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('addMenuModal');
+    if (event.target == modal) toggleModal(false);
+}
+    </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooks Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-white min-h-screen no-scrollbar antialiased text-gray-800">
+
+    <header>
+        <div class="max-w-7xl mx-auto px-4 md:px-8 py-4">
+            <div class="flex justify-between items-center gap-4 mb-6">
+                <div class="flex items-center gap-2">
+      <span class="text-xl">✦</span>
+      <h1 class="text-xl font-bold">Food ordering system</h1>
+    </div>
+                <button onclick="window.location.href = '/public/index.html'"
+                    class="border border-gray-300 text-gray-600 px-3 md:px-5 py-2 rounded-xl text-[10px] sm:text-xs md:text-sm font-semibold hover:bg-gray-50 transition-all active:scale-95 whitespace-nowrap shadow-sm">
+                    back to login
+                </button>
+            </div>
+
+            <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
+        <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+          style="background-color: #1ac8db">Dashboard
+        </span>
+        <a href="/public/cooks/Order_cook.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          Order
+        </a>
+      </div>
+    </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-12 space-y-8">
+
+        <section
+            class="bg-[#f3f4f6] rounded-3xl p-10 md:p-20 shadow-sm flex flex-col md:flex-row items-center justify-center gap-10 md:gap-40">
+            <h2 class="text-2xl md:text-4xl font-bold text-center md:text-left leading-tight">
+                number of<br>select menu
+            </h2>
+            <span class="text-6xl md:text-9xl font-bold text-gray-800">30</span>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 pb-12">
+            <section
+                class="bg-gray-100 p-8 md:p-16 shadow-sm border border-gray-100 transition-transform hover:-translate-y-1 duration-300">
+                <h3 class="text-2xl md:text-5xl font-bold text-center mb-10 md:mb-16">Ranking</h3>
+                <div class="space-y-8 md:space-y-12">
+                    <div class="flex items-center justify-center gap-6 md:gap-12 group">
+                        <div
+                            class="rounded-xl w-10 h-10 md:w-20 md:h-20 flex items-center justify-center flex-shrink-0">
+                            <svg width="60" height="60" viewBox="0 0 64 64">
+                                <defs>
+                                    <linearGradient id="gold" x1="0" x2="1">
+                                        <stop offset="0%" stop-color="#FFD700" />
+                                        <stop offset="100%" stop-color="#FFC300" />
+                                    </linearGradient>
+                                </defs>
+
+                                <!-- Cup -->
+                                <path d="M16 8h32v10c0 10-8 18-16 18s-16-8-16-18V8z" fill="url(#gold)" />
+
+                                <!-- Handles -->
+                                <path d="M16 10h-6c0 10 6 14 10 14" fill="none" stroke="#FFC300" stroke-width="2" />
+                                <path d="M48 10h6c0 10-6 14-10 14" fill="none" stroke="#FFC300" stroke-width="2" />
+
+                                <!-- Base -->
+                                <rect x="26" y="36" width="12" height="6" fill="#B8860B" />
+                                <rect x="22" y="42" width="20" height="6" fill="#8B7500" />
+
+                                <!-- Number -->
+                                <text x="32" y="26" text-anchor="middle" font-size="14" fill="black">1</text>
+                            </svg>
+                        </div>
+                        <span class="text-xl md:text-4xl text-gray-700">pad thai</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-6 md:gap-12 group">
+                        <div
+                            class="rounded-xl w-10 h-10 md:w-20 md:h-20 flex items-center justify-center flex-shrink-0">
+                            <svg width="60" height="60" viewBox="0 0 64 64">
+                                <defs>
+                                    <linearGradient id="silver" x1="0" x2="1">
+                                        <stop offset="0%" stop-color="#C0C0C0" />
+                                        <stop offset="100%" stop-color="#A9A9A9" />
+                                    </linearGradient>
+                                </defs>
+
+                                <path d="M16 8h32v10c0 10-8 18-16 18s-16-8-16-18V8z" fill="url(#silver)" />
+
+                                <path d="M16 10h-6c0 10 6 14 10 14" fill="none" stroke="#A9A9A9" stroke-width="2" />
+                                <path d="M48 10h6c0 10-6 14-10 14" fill="none" stroke="#A9A9A9" stroke-width="2" />
+
+                                <rect x="26" y="36" width="12" height="6" fill="#808080" />
+                                <rect x="22" y="42" width="20" height="6" fill="#696969" />
+
+                                <text x="32" y="26" text-anchor="middle" font-size="14" fill="black">2</text>
+                            </svg>
+                        </div>
+                        <span class="text-xl md:text-4xl text-gray-700">pad thai</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-6 md:gap-12 group">
+                        <div
+                            class="rounded-xl w-10 h-10 md:w-20 md:h-20 flex items-center justify-center flex-shrink-0">
+                            <svg width="60" height="60" viewBox="0 0 64 64">
+                                <defs>
+                                    <linearGradient id="bronze" x1="0" x2="1">
+                                        <stop offset="0%" stop-color="#CD7F32" />
+                                        <stop offset="100%" stop-color="#8B4513" />
+                                    </linearGradient>
+                                </defs>
+
+                                <path d="M16 8h32v10c0 10-8 18-16 18s-16-8-16-18V8z" fill="url(#bronze)" />
+
+                                <path d="M16 10h-6c0 10 6 14 10 14" fill="none" stroke="#8B4513" stroke-width="2" />
+                                <path d="M48 10h6c0 10-6 14-10 14" fill="none" stroke="#8B4513" stroke-width="2" />
+
+                                <rect x="26" y="36" width="12" height="6" fill="#A0522D" />
+                                <rect x="22" y="42" width="20" height="6" fill="#6B3E26" />
+
+                                <text x="32" y="26" text-anchor="middle" font-size="14" fill="black">3</text>
+                            </svg>
+                        </div>
+                        <span class="text-xl md:text-4xl text-gray-700">pad thai</span>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="bg-gray-100 rounded-[2.5rem] md:rounded-[4rem] p-8 md:p-16 shadow-sm border border-gray-100 flex flex-col justify-center transition-transform hover:-translate-y-1 duration-300">
+                <h3 class="text-2xl md:text-4xl font-bold text-center mb-10 md:mb-16">Reviews</h3>
+                <div class="space-y-12 md:space-y-16">
+                    <div
+                        class="flex items-center justify-center gap-8 md:gap-20 border-b border-gray-50 pb-6 last:border-0 last:pb-0">
+                        <span class="text-3xl md:text-6xl font-bold">4.5</span>
+                        <span class="text-lg md:text-3xl font-semibold text-gray-700">puttapoom</span>
+                    </div>
+                    <div
+                        class="flex items-center justify-center gap-8 md:gap-20 border-b border-gray-50 pb-6 last:border-0 last:pb-0">
+                        <span class="text-3xl md:text-6xl font-bold">4.5</span>
+                        <span class="text-lg md:text-3xl font-semibold text-gray-700">puttapoom</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-8 md:gap-20">
+                        <span class="text-3xl md:text-6xl font-bold">4.5</span>
+                        <span class="text-lg md:text-3xl font-semibold text-gray-700">puttapoom</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+</body>
+
+</html>

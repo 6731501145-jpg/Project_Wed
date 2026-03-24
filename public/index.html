@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Food Ordering System</title>
+    <style>
+        /* เพิ่มฟอนต์ให้นุ่มนวลขึ้น */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl">
+        
+        <div class="flex items-center justify-center gap-2 mb-8">
+           <span class="text-xl">✦</span>
+           <h1 class="text-xl font-bold">Food ordering system</h1>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <a href="/public/customers/Login_customers.html" class="md:col-span-2 bg-[#64CCD9] p-8 md:p-12 rounded-[2.5rem] text-white relative group transition-all duration-300 hover:brightness-105 active:scale-[0.98] shadow-lg">
+                <div class="bg-white w-20 h-20 rounded-2xl flex items-center justify-center mb-16 shadow-sm">
+                    <img class="w-12 h-12" src="/view/restaurant.png" alt="Food">
+                </div>
+                <h1 class="text-3xl font-bold tracking-wide">ORDER NOW</h1>
+                <p class="text-blue-50 mt-2 opacity-90">Welcome!<br>Everything you need is just one click away. Let's begin.</p>
+                <span class="absolute top-8 right-8 text-3xl opacity-60 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">↗</span>
+            </a>
+
+            <a href="/public/admin/Login_admin.html" class="bg-[#F3F4F6] p-8 rounded-[1.8rem] flex justify-between items-center group transition-all hover:bg-[#E5E7EB] active:scale-[0.97]">
+                <span class="font-bold text-gray-800 text-lg tracking-wider uppercase">FOR ADMIN</span>
+                <span class="text-2xl text-gray-400 group-hover:text-gray-800 transition-colors">↗</span>
+            </a>
+
+            <a href="/public/cooks/Login_cooks.html" class="bg-[#F3F4F6] p-8 rounded-[1.8rem] flex justify-between items-center group transition-all hover:bg-[#E5E7EB] active:scale-[0.97]">
+                <span class="font-bold text-gray-800 text-lg tracking-wider uppercase">FOR COOKS</span>
+                <span class="text-2xl text-gray-400 group-hover:text-gray-800 transition-colors">↗</span>
+            </a>
+
+        </div>
+    </div>
+
+</body>
+</html>

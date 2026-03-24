@@ -1,0 +1,87 @@
+body {
+    font-family: 'Rockwell', 'Georgia', serif; 
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    margin: 0;
+    padding-top: 50px; 
+}
+.page-title {
+    color: #191A23;
+    font-size: 55px;
+    font-weight: bold;
+    margin-bottom: 30px;
+    letter-spacing: 2px; 
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.2); 
+}
+.receipt-box {
+    width: 600px;
+}
+.receipt-header {
+    background-color: #F3F3F3; 
+    color: #191A23;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 28px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+}
+.receipt-body {
+    background-color: #F3F3F3; 
+    padding: 20px;
+    color: #191A23;
+    display: flex;
+    flex-direction: column;
+}
+.column-headers {
+    display: flex;
+    justify-content: space-between;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px black;
+}
+.item-list-space {
+    height: 120px; 
+}
+.total-price {
+    font-size: 28px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    margin-bottom: 10px;
+}
+.rating-stars {
+    font-size: 45px;
+    margin-bottom: 10px;
+    margin-top: -15px;
+}
+
+.star-white {
+    color: yellow;
+}
+
+.star-dark {
+    color: #4a4a4a; 
+}
+.comment-box {
+    background-color: white;
+    height: 40px;
+    width: 75%; 
+}
+.back {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+.btn-goback {
+    background: #1AC8DB;
+    color: white;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 18px;
+    border: none;
+    text-decoration: none; 
+    display: inline-block;
+}

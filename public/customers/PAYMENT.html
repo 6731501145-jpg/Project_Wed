@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/view/css/PAYMEANT.css">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>PAYMEANT</title>
+</head>
+<body>
+    <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
+      <div class="flex-1 flex items-center gap-2">
+        <span class="text-xl">✦</span>
+        <span class="font-bold text-base md:text-lg">Food ordering system</span>
+      </div>
+      <div class="flex-none">
+        <button
+          class="btn btn-outline btn-sm rounded-xl text-sm"
+         onclick="window.location.href = '/public/index.html'"
+        >
+          back to login
+        </button>
+      </div>
+    </div>
+    <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
+        <a href="/public/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          menu
+        </a>
+        <a href="/public/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          cart
+        </a>
+        <a href="/public/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          check
+        </a>
+        <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+          style="background-color: #1ac8db">payment
+        </span>
+      </div>
+    </div>
+
+    <div class="text-box">TABLE 4</div>
+
+    <div class="text-box2">
+        <span>MENU</span>
+        <span>PRICE</span>
+        <span>NUMBER</span>
+    </div>
+
+    <div class="checkout">
+        <a href="#checkoutModal" class="btn-checkout">CHECK OUT</a>
+    </div>
+
+    <div id="checkoutModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>TABLE 4</h2>
+            
+            <div class="price-section">
+                <h3>TOTAL PRICE</h3>
+                <p>XXXX</p>
+            </div>
+
+            <div class="modal-buttons">
+                <a href="/public/customers/history2.html" class="btn-check">CHECK OUT</a>
+                <a href="/public/customers/REVIEW.html" class="btn-review">REVIEW</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
