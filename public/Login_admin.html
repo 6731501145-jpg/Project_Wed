@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Cook Sign In</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </head>
+  <body class="bg-base-100 min-h-screen flex flex-col">
+    <!-- ══ NAVBAR ══ -->
+    <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
+      <div class="flex-1 flex items-center gap-2">
+        <span class="text-xl">✦</span>
+        <span class="font-bold text-base md:text-lg">Food ordering system</span>
+      </div>
+      <div class="flex-none">
+        <button
+          class="btn btn-outline btn-sm rounded-xl text-sm"
+          onclick="window.location.href = '/public/index.html'"
+        >
+          back to Home
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ CENTERED FORM ══ -->
+    <div class="flex flex-1 items-center justify-center px-4 py-12">
+      <div class="w-full max-w-md">
+        <h1 class="text-3xl font-bold mb-8">Welcome Admin</h1>
+
+        <!-- Name -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium mb-1">Name</label>
+          <input
+            id="name"
+            type="text"
+            placeholder="Enter your name"
+            class="input input-bordered w-full rounded-lg text-sm"
+          />
+        </div>
+
+        <!-- ID -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-1">ID</label>
+          <input
+            id="empId"
+            type="text"
+            placeholder="Enter your id"
+            class="input input-bordered w-full rounded-lg text-sm"
+          />
+        </div>
+
+        <!-- Sign up button -->
+        <button
+          onclick="doLogin()"
+          class="btn w-full rounded-lg text-white font-semibold text-base"
+          style="background-color: #1AC8D8; border: none"
+        >
+          Sign in
+        </button>
+        
+      </div>
+    </div>
+
+    <script>
+      function doLogin() {
+        const name = document.getElementById("name").value.trim();
+        const id = document.getElementById("empId").value.trim();
+
+        if (!name || !id) {
+          Swal.fire({
+            icon: "warning",
+            title: "Incomplete",
+            text: "Please fill in all fields",
+            confirmButtonColor: "#1AC8DB",
+            confirmButtonText: "OK",
+          });
+          return;
+        }
+
+        // TODO: connect to backend
+        Swal.fire({
+          icon: "success",
+          title: `Welcome, ${name}!`,
+          text: "Sign in successful",
+          confirmButtonColor: "#1AC8DB",
+          confirmButtonText: "Continue",
+        }).then(() => {
+          window.location.href = "Dashdoard_admin.html";
+        });
+      }
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") doLogin();
+      });
+    </script>
+  </body>
+</html>
