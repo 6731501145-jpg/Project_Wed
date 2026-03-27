@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Page</title>
-    <link rel="stylesheet" href="/view/css/REVIEW.css">
+    <link rel="stylesheet" href="review.css">
+    <style>
+        /* เพิ่ม CSS เล็กน้อยเพื่อให้ดาวดูเหมือนกดได้ */
+        .star { cursor: pointer; transition: color 0.2s; }
+        .star-dark { color: #FFD700; } /* สมมติให้ดาวที่เลือกเป็นสีทอง */
+        .star-white { color: #ccc; }   /* ดาวที่ยังไม่เลือกเป็นสีเทา */
+    </style>
 </head>
 <body>
 
@@ -14,21 +20,90 @@
         </div>
         
         <div class="review-content">
-            <div class="stars">
-                <span class="star-white">★</span>
-                <span class="star-white">★</span>
-                <span class="star-white">★</span>
-                <span class="star-dark">★</span>
-                <span class="star-dark">★</span>
+            <div class="stars" id="star-container">
+                <span class="star star-white" data-value="1">★</span>
+                <span class="star star-white" data-value="2">★</span>
+                <span class="star star-white" data-value="3">★</span>
+                <span class="star star-white" data-value="4">★</span>
+                <span class="star star-white" data-value="5">★</span>
             </div>
             
-            <textarea class="review-textbox" placeholder=""></textarea>
+            <textarea id="review-text" class="review-textbox" placeholder="Tell us about your experience..."></textarea>
         </div>
     </div>
 
     <div class="checkout-section">
-        <a href="HISTORY.html" class="btn-checkout">CHECK OUT</a>
+        <a href="#" id="btn-submit-review" class="btn-checkout">SUBMIT & CHECK OUT</a>
     </div>
 
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        const TABLE_ID = '4'; // สมมติว่าเป็นโต๊ะ 4
+        let currentRating = 0; // ตัวแปรเก็บคะแนนดาว
+
+        // 1. ระบบกดให้คะแนนดาว
+        const stars = document.querySelectorAll('.star');
+        
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                currentRating = this.getAttribute('data-value'); // ดึงค่า 1-5 ออกมา
+                
+                // วนลูปเปลี่ยนสีดาว
+                stars.forEach(s => {
+                    if (s.getAttribute('data-value') <= currentRating) {
+                        s.classList.add('star-dark');
+                        s.classList.remove('star-white');
+                    } else {
+                        s.classList.add('star-white');
+                        s.classList.remove('star-dark');
+                    }
+                });
+            });
+        });
+
+        // 2. ระบบกดปุ่ม Submit ส่งข้อมูลไป Server
+        document.getElementById('btn-submit-review').addEventListener('click', async (e) => {
+            e.preventDefault(); // ป้องกันไม่ให้ลิงก์เปลี่ยนหน้าทันที
+
+            const reviewText = document.getElementById('review-text').value;
+
+            // ตรวจสอบว่าลูกค้าให้ดาวหรือยัง (ใน Requirement บอกว่า Optional แต่ถ้าบังคับให้กดดาวค่อยเปิดใช้เงื่อนไขนี้ได้ครับ)
+            /*
+            if (currentRating === 0) {
+                alert('กรุณาให้คะแนนดาวก่อนนะครับ!');
+                return;
+            }
+            */
+
+            try {
+                // ยิงข้อมูลไปที่ API
+                const response = await fetch(`${API_URL}/review`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tableId: TABLE_ID,
+                        rating: currentRating,
+                        comment: reviewText
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Thank you for your review!');
+                    
+                    // 🟢 เพิ่ม 2 บรรทัดนี้ เพื่อฝากคะแนนและข้อความไว้ในเบราว์เซอร์ชั่วคราว
+                    localStorage.setItem('savedRating', currentRating);
+                    localStorage.setItem('savedComment', reviewText);
+
+                    // ส่งรีวิวเสร็จ พาไปหน้าใบเสร็จ
+                    window.location.href = 'history2.html'; 
+                }
+            } catch (error) {
+                console.error('Error submitting review:', error);
+                alert('เกิดข้อผิดพลาดในการส่งรีวิว');
+            }
+        });
+    </script>
 </body>
 </html>
