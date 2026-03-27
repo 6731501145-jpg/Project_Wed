@@ -22,6 +22,7 @@ body {
     color: #191A23;   
     line-height: 1.5;       
 }
+
 .text-box2 {
     background: #F3F3F3;
     padding: 20px;        
@@ -30,9 +31,31 @@ body {
     color: #191A23;           
     line-height: 1.5;       
     display: flex;                 
-    justify-content: space-between;
-    height: 200px;
+    flex-direction: column; 
+    min-height: 200px; 
+    box-sizing: border-box;
 }
+
+
+.order-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.order-header {
+    font-weight: bold;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.col-menu { flex: 1; text-align: left; }
+.col-price { flex: 1; text-align: center; }
+.col-number { flex: 1; text-align: right; }
+
+
 .checkout {
     display: flex;
     justify-content: center;
@@ -64,6 +87,7 @@ body {
     display: flex;
 }
 
+
 .modal-content {
     background-color: white;
     width: 450px;
@@ -72,6 +96,23 @@ body {
     color: #191A23;
     text-align: center;
     font-family: serif; 
+    position: relative; 
+}
+
+.close-modal {
+    position: absolute; 
+    top: 10px;      
+    right: 15px;    
+    font-size: 28px; 
+    font-weight: bold;
+    color: #555;     
+    text-decoration: none; 
+    cursor: pointer;  
+    transition: color 0.2s; 
+}
+
+.close-modal:hover {
+    color: #000;  
 }
 
 .modal-content h2 {
@@ -120,4 +161,3 @@ body {
     text-decoration: none; 
     font-weight: bold;
 }
-
