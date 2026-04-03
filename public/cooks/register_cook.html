@@ -138,19 +138,8 @@
         const isHidden = input.type === 'password';
         input.type = isHidden ? 'text' : 'password';
         icon.innerHTML = isHidden
-          ? /* eye-off */
-            `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7
-              a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878
-              l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59
-              m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0
-              01-4.132 5.411m0 0L21 21"/>`
-          : /* eye */
-            `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542
-              7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+          ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878 l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59 m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>`
+          : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
       }
 
       /* ── Real-time password match hint ── */
@@ -168,76 +157,55 @@
         }
       }
 
-      /* ── Register ── */
-      function doRegister() {
+      /* ── Register เชื่อม Database ── */
+      async function doRegister() {
         const name = document.getElementById('name').value.trim();
         const id   = document.getElementById('empId').value.trim();
         const pwd  = document.getElementById('password').value;
         const cpwd = document.getElementById('confirmPassword').value;
 
-        // 1. All fields filled?
+        // เช็คข้อมูลครบถ้วน
         if (!name || !id || !pwd || !cpwd) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Incomplete',
-            text: 'Please fill in all fields',
-            confirmButtonColor: '#1AC8DB',
-            confirmButtonText: 'OK',
-          });
+          Swal.fire({ icon: 'warning', title: 'Incomplete', text: 'Please fill in all fields', confirmButtonColor: '#1AC8DB' });
           return;
         }
 
-        // 2. Password length
-        if (pwd.length < 6) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Password too short',
-            text: 'Password must be at least 6 characters',
-            confirmButtonColor: '#1AC8DB',
-            confirmButtonText: 'OK',
-          });
+        if (pwd.length < 4) { // ปรับความยาวรหัสผ่านตามความเหมาะสม
+          Swal.fire({ icon: 'warning', title: 'Password too short', text: 'Password must be at least 4 characters', confirmButtonColor: '#1AC8DB' });
           return;
         }
 
-        // 3. Passwords match?
         if (pwd !== cpwd) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Password Mismatch',
-            text: 'Passwords do not match. Please try again.',
-            confirmButtonColor: '#1AC8DB',
-            confirmButtonText: 'OK',
-          });
+          Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match.', confirmButtonColor: '#1AC8DB' });
           return;
         }
 
-        // 4. ID already exists?
-        const users  = JSON.parse(localStorage.getItem('cook_users') || '[]');
-        const exists = users.find(u => u.id === id);
-        if (exists) {
-          Swal.fire({
-            icon: 'error',
-            title: 'ID already exists',
-            text: `ID "${id}" is already registered.`,
-            confirmButtonColor: '#1AC8DB',
-            confirmButtonText: 'OK',
+        try {
+          // ส่งข้อมูลไปบันทึกที่ Database ผ่าน API
+          const response = await fetch('http://localhost:3000/cooks/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cook_id: id, name: name, password: pwd })
           });
-          return;
+
+          if (response.ok) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Registered!',
+              html: `<b>Name:</b> ${name}<br><b>ID:</b> ${id}`,
+              confirmButtonColor: '#1AC8DB',
+              confirmButtonText: 'Go to Sign In',
+            }).then(() => {
+              window.location.href = 'Login_cooks.html';
+            });
+          } else {
+            const errorText = await response.text();
+            Swal.fire({ icon: 'error', title: 'Registration Failed', text: errorText, confirmButtonColor: '#1AC8DB' });
+          }
+        } catch (error) {
+          console.error(error);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: '#1AC8DB' });
         }
-
-        // 5. Save & redirect
-        users.push({ name, id, password: pwd });
-        localStorage.setItem('cook_users', JSON.stringify(users));
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Registered!',
-          html: `<b>Name:</b> ${name}<br><b>ID:</b> ${id} <br><b>Password:</b> ${pwd}`,
-          confirmButtonColor: '#1AC8DB',
-          confirmButtonText: 'Go to Sign In',
-        }).then(() => {
-          window.location.href = 'login_cooks.html';
-        });
       }
 
       document.addEventListener('keydown', (e) => {
