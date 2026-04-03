@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Cook Sign In</title>
+    <title>Cook Sign In</title>
     <link
       href="https://cdn.jsdelivr.net/npm/daisyui@5"
       rel="stylesheet"
@@ -80,11 +80,11 @@
     </div>
 
     <script>
-      function doLogin() {
-        const name = document.getElementById("name").value.trim();
-        const id = document.getElementById("empId").value.trim();
+      async function doLogin() {
+        const name = document.getElementById("name").value.trim(); // ใช้ช่องนี้เป็น Cook ID
+        const password = document.getElementById("empId").value.trim(); // ช่องนี้คือ Password
 
-        if (!name || !id) {
+        if (!name || !password) {
           Swal.fire({
             icon: "warning",
             title: "Incomplete",
@@ -95,17 +95,35 @@
           return;
         }
 
-        // TODO: connect to backend
-        Swal.fire({
-          icon: "success",
-          title: `Welcome, ${name}!`,
-          text: "Sign in successful",
-          confirmButtonColor: "#1AC8DB",
-          confirmButtonText: "Continue",
-        }).then(() => {
-          window.location.href = "Dashdoard_cook.html";
-        });
+        try {
+          // เชื่อมต่อ Backend
+          const response = await fetch('http://localhost:3000/cooks/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cook_id: name, password: password })
+          });
+
+          if (response.ok) {
+            const redirectPath = await response.text();
+            Swal.fire({
+              icon: "success",
+              title: `Welcome back!`,
+              text: "Sign in successful",
+              confirmButtonColor: "#1AC8DB",
+              confirmButtonText: "Continue",
+            }).then(() => {
+              window.location.href = redirectPath;
+            });
+          } else {
+            const errorText = await response.text();
+            Swal.fire({ icon: 'error', title: 'Login Failed', text: errorText, confirmButtonColor: "#1AC8DB" });
+          }
+        } catch (error) {
+          console.error(error);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: "#1AC8DB" });
+        }
       }
+
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter") doLogin();
       });
