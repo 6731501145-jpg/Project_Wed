@@ -13,7 +13,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
   <body class="bg-base-100 min-h-screen flex flex-col">
-    <!-- ══ NAVBAR ══ -->
     <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
       <div class="flex-1 flex items-center gap-2">
         <span class="text-xl">✦</span>
@@ -29,34 +28,30 @@
       </div>
     </div>
 
-    <!-- ══ CENTERED FORM ══ -->
     <div class="flex flex-1 items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
         <h1 class="text-3xl font-bold mb-8">Welcome Admin</h1>
 
-        <!-- Name -->
         <div class="mb-5">
-          <label class="block text-sm font-medium mb-1">Name</label>
+          <label class="block text-sm font-medium mb-1">Admin ID</label>
           <input
-            id="name"
+            id="admin_id"
             type="text"
-            placeholder="Enter your name"
+            placeholder="Enter your Admin ID"
             class="input input-bordered w-full rounded-lg text-sm"
           />
         </div>
 
-        <!-- ID -->
         <div class="mb-6">
-          <label class="block text-sm font-medium mb-1">ID</label>
+          <label class="block text-sm font-medium mb-1">Password</label>
           <input
-            id="empId"
-            type="text"
-            placeholder="Enter your id"
+            id="password"
+            type="password"
+            placeholder="Enter your password"
             class="input input-bordered w-full rounded-lg text-sm"
           />
         </div>
 
-        <!-- Sign up button -->
         <button
           onclick="doLogin()"
           class="btn w-full rounded-lg text-white font-semibold text-base"
@@ -69,11 +64,11 @@
     </div>
 
     <script>
-      function doLogin() {
-        const name = document.getElementById("name").value.trim();
-        const id = document.getElementById("empId").value.trim();
+      async function doLogin() {
+        const adminId = document.getElementById("admin_id").value.trim();
+        const password = document.getElementById("password").value;
 
-        if (!name || !id) {
+        if (!adminId || !password) {
           Swal.fire({
             icon: "warning",
             title: "Incomplete",
@@ -84,19 +79,48 @@
           return;
         }
 
-        // TODO: connect to backend
-        Swal.fire({
-          icon: "success",
-          title: `Welcome, ${name}!`,
-          text: "Sign in successful",
-          confirmButtonColor: "#1AC8DB",
-          confirmButtonText: "Continue",
-        }).then(() => {
-          window.location.href = "Dashdoard_admin.html";
-        });
+        try {
+          // เชื่อมต่อกับ Backend ของเรา
+          const response = await fetch('http://localhost:3000/admin/signin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: adminId, password: password })
+          });
+
+          if (response.ok) {
+            const redirectPath = await response.text();
+            Swal.fire({
+              icon: "success",
+              title: `Welcome Admin!`,
+              text: "Sign in successful",
+              confirmButtonColor: "#1AC8DB",
+              confirmButtonText: "Continue",
+            }).then(() => {
+              window.location.href = redirectPath; // ให้ Backend ชี้ทางไปหน้า Dashboard
+            });
+          } else {
+            const errorText = await response.text();
+            Swal.fire({ 
+              icon: 'error', 
+              title: 'Login Failed', 
+              text: errorText, 
+              confirmButtonColor: "#1AC8DB" 
+            });
+          }
+        } catch (error) {
+          console.error(error);
+          Swal.fire({ 
+            icon: 'error', 
+            title: 'Error', 
+            text: 'Cannot connect to server', 
+            confirmButtonColor: "#1AC8DB" 
+          });
+        }
       }
+
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") doLogin();
+        // ให้กด Enter ได้เฉพาะตอนที่ไม่มี Popup ของ SweetAlert บังอยู่
+        if (e.key === "Enter" && !Swal.isVisible()) doLogin();
       });
     </script>
   </body>
