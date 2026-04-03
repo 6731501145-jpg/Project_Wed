@@ -78,7 +78,7 @@
     </div>
 
     <script>
-      function doLogin() {
+      async function doLogin() {
         const username = document.getElementById("username").value.trim();
         const table = document.getElementById("tableSelect").value;
 
@@ -93,20 +93,39 @@
           return;
         }
 
-        sessionStorage.setItem("username", username);
-        sessionStorage.setItem("table", table);
+        try {
+          // เชื่อมต่อ API ลูกค้า
+          const response = await fetch('http://localhost:3000/customers/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, table_number: parseInt(table) })
+          });
 
-        Swal.fire({
-          icon: "success",
-          title: `Welcome, ${username}!`,
-          html: `You're at <b>Table ${table}</b>`,
-          confirmButtonColor: "#1AC8DB",
-          confirmButtonText: "Order Now",
-          timer: 2000,
-          timerProgressBar: true,
-        }).then(() => {
-          window.location.href = "Menu_customers.html";
-        });
+          if (response.ok) {
+            const redirectPath = await response.text();
+
+            // เซฟลง sessionStorage เหมือนเดิม ไว้ให้หน้าอื่นใช้งานต่อ
+            sessionStorage.setItem("username", username);
+            sessionStorage.setItem("table", table);
+
+            Swal.fire({
+              icon: "success",
+              title: `Welcome, ${username}!`,
+              html: `You're at <b>Table ${table}</b>`,
+              confirmButtonColor: "#1AC8DB",
+              confirmButtonText: "Order Now",
+              timer: 2000,
+              timerProgressBar: true,
+            }).then(() => {
+              window.location.href = redirectPath;
+            });
+          } else {
+            Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Something went wrong', confirmButtonColor: "#1AC8DB" });
+          }
+        } catch (error) {
+          console.error(error);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: "#1AC8DB" });
+        }
       }
 
       document.addEventListener("keydown", (e) => {
