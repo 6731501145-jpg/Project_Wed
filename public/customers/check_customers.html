@@ -71,46 +71,65 @@
     <div id="toastArea" class="toast toast-bottom toast-center z-50"></div>
 
     <script>
-      /* ── Demo orders
-     In production, replace this array with a fetch/WebSocket call to your backend.
-     Each item: { name: string, status: 'pending' | 'done' }
-  ── */
-      const orders = [
-        { name: "Fried Rice", status: "pending" },
-        { name: "Pad Thai", status: "pending" },
-        { name: "Omelet", status: "pending" },
-        { name: "Tom Yum Goong", status: "done" },
-      ];
-
-      /* ── Render ── */
-      function renderOrders() {
+      /* ── ดึงข้อมูลจริงจาก Database แทน Demo Data ── */
+      async function renderOrders() {
         const el = document.getElementById("orderList");
+        
+        // ดึงเลขโต๊ะจากที่ลูกค้า Login เข้ามา
+        const tableNumber = sessionStorage.getItem("table");
 
-        if (!orders.length) {
+        if (!tableNumber) {
           el.innerHTML = `
-        <div class="text-center py-16 text-base-content/40">
-          <div class="text-5xl mb-3">📋</div>
-          <p class="text-sm">No orders yet</p>
-        </div>`;
+            <div class="text-center py-16 text-base-content/40">
+              <p class="text-sm">กรุณาเข้าสู่ระบบก่อนครับ</p>
+            </div>`;
           return;
         }
 
-        el.innerHTML = orders
-          .map(
-            (o) => `
-      <div class="card bg-base-200 rounded-2xl">
-        <div class="card-body flex-row items-center justify-between p-4 md:p-5">
-          <span class="font-semibold text-sm md:text-base">${o.name}</span>
-          <span class="font-semibold text-sm ${o.status === "done" ? "text-success" : "text-warning"}">
-            ${o.status === "done" ? "Done" : "Pending"}
-          </span>
-        </div>
-      </div>
-    `,
-          )
-          .join("");
+        try {
+          // ส่ง request ไปหา API เช็คสถานะอาหารของโต๊ะนี้
+          const response = await fetch(`http://localhost:3000/customers/orders?table=${tableNumber}`);
+          
+          if (response.ok) {
+            const orders = await response.json();
+
+            if (!orders || orders.length === 0) {
+              el.innerHTML = `
+                <div class="text-center py-16 text-base-content/40">
+                  <div class="text-5xl mb-3">📋</div>
+                  <p class="text-sm">No orders yet</p>
+                </div>`;
+              return;
+            }
+
+            // นำข้อมูลที่ได้จากฐานข้อมูลมาโชว์บนจอ
+            el.innerHTML = orders.map((o) => {
+              // ตกแต่งสถานะให้สวยงาม
+              let isDone = (o.status === "serving" || o.status === "completed");
+              let statusText = o.status.charAt(0).toUpperCase() + o.status.slice(1); // ทำให้ตัวแรกเป็นพิมพ์ใหญ่
+
+              return `
+                <div class="card bg-base-200 rounded-2xl">
+                  <div class="card-body flex-row items-center justify-between p-4 md:p-5">
+                    <span class="font-semibold text-sm md:text-base">${o.menu_name}</span>
+                    <span class="font-semibold text-sm ${isDone ? "text-success" : "text-warning"}">
+                      ${statusText}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }).join("");
+
+          } else {
+            el.innerHTML = `<p class="text-center text-error mt-10">เกิดข้อผิดพลาดในการดึงข้อมูล</p>`;
+          }
+        } catch (error) {
+          console.error("Error fetching orders:", error);
+          el.innerHTML = `<p class="text-center text-error mt-10">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้</p>`;
+        }
       }
 
+      // ให้ฟังก์ชันทำงานทันทีที่โหลดหน้าเว็บเสร็จ
       window.onload = renderOrders;
     </script>
   </body>
