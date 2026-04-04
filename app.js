@@ -160,6 +160,57 @@ app.patch('/cook/order/:id/status', async (req, res) => {
     }
 });
 
+// ออเดอร์ที่เสิร์ฟแล้ววันนี้ dashboard
+app.get('/api/cook/order/today', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT COUNT(oi.order_item_id) as total_qty 
+            FROM order_item oi 
+            JOIN \`order\` o ON oi.order_id = o.order_id 
+            WHERE o.status IN ('serving') AND DATE(o.order_time) = CURDATE()
+        `);
+        res.status(200).json({ total_qty: rows[0].total_qty || 0 });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// top-menu dashboard
+app.get('/api/cook/top-menus/today', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT m.menu_id as id, m.name, m.image_url as image, COUNT(oi.order_item_id) as total_qty
+            FROM \`order\` o
+            JOIN order_item oi ON o.order_id = oi.order_id
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            WHERE o.status IN ('serving') AND DATE(o.order_time) = CURDATE()
+            GROUP BY m.menu_id
+            ORDER BY total_qty DESC
+        `);
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// reviewa dashboard
+app.get('/api/cook/review/today', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT r.review_id as id, c.username as customer_name, r.rating, r.comment, r.created_at as date
+            FROM review r
+            JOIN payment p ON r.payment_id = p.payment_id
+            JOIN \`order\` o ON p.order_id = o.order_id
+            JOIN customer c ON r.customer_id = c.customer_id
+            WHERE DATE(r.created_at) = CURDATE()
+            ORDER BY r.created_at DESC
+        `);
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ==========================================
 // 🍽️ 4. CUSTOMER SECTION (ระบบลูกค้า)
 // ==========================================
@@ -296,10 +347,130 @@ app.patch('/admin/products/:id', async (req, res) => {
     } catch (error) { res.status(500).send('Error'); }
 });
 
+// --- dashboard ---
+app.get('/api/admin/summary', async (req, res) => {
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+        return res.status(400).json({ error: "Missing start or end date parameters." });
+    }
+
+    try {
+        const [nowRes] = await pool.query(`SELECT COUNT(DISTINCT customer_id) as customer_now FROM \`order\` WHERE DATE(order_time) = CURDATE() AND status IN ('serving')`);
+        const [custRes] = await pool.query(`SELECT COUNT(DISTINCT customer_id) as total_customers FROM \`order\` WHERE order_time BETWEEN ? AND ?`, [start, end]);
+        const [revRes] = await pool.query(`SELECT SUM(total_price) as total_revenue FROM \`order\` WHERE order_time BETWEEN ? AND ?`, [start, end]);
+
+        res.status(200).json({
+            customer_now: nowRes[0].customer_now || 0,
+            total_customers: custRes[0].total_customers || 0,
+            total_revenue: revRes[0].total_revenue || 0
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/admin/top-menus', async (req, res) => {
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+        return res.status(400).json({ error: "Missing start or end date parameters." });
+    }
+
+    try {
+        const [rows] = await pool.query(`
+            SELECT m.menu_id as id, m.name, m.image_url as image, COUNT(oi.order_item_id) as total_qty
+            FROM \`order\` o
+            JOIN order_item oi ON o.order_id = oi.order_id
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            WHERE o.order_time BETWEEN ? AND ?
+            GROUP BY m.menu_id
+            ORDER BY total_qty DESC
+        `, [start, end]);
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/admin/reviews', async (req, res) => {
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+        return res.status(400).json({ error: "Missing start or end date parameters." });
+    }
+
+    try {
+        const [rows] = await pool.query(`
+            SELECT r.review_id as id, c.username as customer_name, r.rating, r.comment, r.created_at as date
+            FROM review r
+            JOIN customer c ON r.customer_id = c.customer_id
+            WHERE r.created_at BETWEEN ? AND ?
+            ORDER BY r.created_at DESC
+        `, [start, end]);
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/admin/order/now', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT 
+                m.name as menu_names,
+                o.order_time as time,
+                t.table_number as table_num,
+                o.status
+            FROM \`order\` o
+            JOIN order_item oi ON o.order_id = oi.order_id
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            JOIN \`table\` t ON o.table_id = t.table_id
+            JOIN customer c ON o.customer_id = c.customer_id
+            LEFT JOIN payment p ON o.order_id = p.order_id
+            WHERE c.is_paid = 0 
+              AND (p.status IS NULL OR p.status != 'completed')
+            ORDER BY o.order_time DESC
+        `);
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/admin/order/history', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT 
+                GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as menu_names,
+                o.order_time as date,
+                o.total_price as amount,
+                'paid' as status
+            FROM \`order\` o
+            JOIN order_item oi ON o.order_id = oi.order_id
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            JOIN customer c ON o.customer_id = c.customer_id
+            LEFT JOIN payment p ON o.order_id = p.order_id
+            WHERE c.is_paid = 1 
+               OR p.status = 'completed'
+            GROUP BY o.order_id
+            ORDER BY o.order_time DESC
+        `);
+        res.status(200).json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- โหลดหน้า HTML ---
 app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'Menu_customers.html')));
 app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
+app.get('/cook/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_cook.html'));});
 app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
 app.get('/admin/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'lisCook_admin.html')));
+app.get('/admin/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_admin.html'));});
+app.get('/admin/order/now', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/OrderNow_admin.html'));});
+app.get('/admin/order/history', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/OrderHistory_admin.html'));});
+
 
 app.listen(3000, () => console.log('🚀 Server running on http://localhost:3000'));
