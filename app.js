@@ -25,6 +25,19 @@ db.getConnection()
     .catch((err) => console.error('❌ MySQL Connection Error:', err.message));
 
 // =========================================================
+// 🗄️ 1.1 configure session
+// =========================================================
+app.use(session({
+    cookie: { maxAge: 24*60*60*1000},
+    secret: 'webappis2easy',
+    resave: false,
+    saveUninitialized: true,
+    store: new MemoryStore({
+        checkPeriod: 24*60*60*1000
+    })
+}));
+
+// =========================================================
 // 🔑 2. AUTHENTICATION & UTILS
 // =========================================================
 
@@ -75,14 +88,40 @@ app.post('/cooks/register', async (req, res) => {
 
 // Cook Login
 app.post('/cooks/login', async (req, res) => {
+    const { cook_id, password } = req.body;
+    // ปรับ SQL ให้ตรงกับโครงสร้างตาราง cook
+    const sql = "SELECT employee_id, password_hash, role FROM cook WHERE employee_id = ?";
+    
     try {
-        const { cook_id, password } = req.body;
-        const [rows] = await db.query('SELECT * FROM cook WHERE employee_id = ?', [cook_id]);
-        if (rows.length === 0) return res.status(401).send('Wrong CooksID or Password');
-        const isMatch = await bcrypt.compare(password, rows[0].password_hash);
-        if (!isMatch) return res.status(401).send('Wrong CooksID or Password');
-        res.status(200).send('/public/cooks/Dashdoard_cook.html');
-    } catch (error) {
+        const [results] = await db.query(sql, [cook_id]);
+
+        if (results.length !== 1) {
+            return res.status(401).send('Wrong CooksID or Password');
+        }
+
+        // ใช้ argon2 ในการตรวจสอบรหัสผ่าน (ตามแบบโค้ดหลัก)
+        // หมายเหตุ: ตรวจสอบว่าในฐานข้อมูลเก็บเป็น argon2 hash หรือ bcrypt
+        const isMatch = await argon2.verify(results[0].password_hash, password);
+        
+        if (!isMatch) {
+            return res.status(401).send('Wrong CooksID or Password');
+        }
+
+        // สร้าง Session เพื่อรักษาการ Login
+        req.session.user_id = results[0].employee_id;
+        req.session.username = cook_id;
+        req.session.role = results[0].role; // หรือกำหนดเป็น 'cook' ตายตัวถ้าไม่มีคอลัมน์ role
+
+        // ตรวจสอบ Role เพื่อนำทาง (Navigation)
+        if (results[0].role === 'cook') {
+            res.send('/public/cooks/Dashdoard_cook.html');
+        } else {
+            // กรณีมี role อื่นๆ หรือค่าเริ่มต้น
+            res.send('/public/index.html');
+        }
+
+    } catch (err) {
+        console.error(err);
         res.status(500).send('Server error');
     }
 });
@@ -465,7 +504,18 @@ app.get('/api/admin/order/history', async (req, res) => {
 // --- โหลดหน้า HTML ---
 app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'Menu_customers.html')));
 app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
-app.get('/cook/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_cook.html'));});
+app.get('/cook/dashboard', (req, res) => {
+    if(req.session.role === 'cook') {
+        return res.redirect('/public/cooks/Dashdoard_cook.html');
+    }res.sendFile(path.join(__dirname, '/public/index.html'));
+});
+app.get('/cook/orders', (req, res) => {
+    if(req.session.role === 'cook') {
+        return res.redirect('/public/cooks/Order_cook.html');
+    }res.sendFile(path.join(__dirname, '/public/index.html'));
+  
+});
+
 app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
 app.get('/admin/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'lisCook_admin.html')));
 app.get('/admin/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_admin.html'));});
