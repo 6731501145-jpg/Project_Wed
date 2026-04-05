@@ -10,17 +10,17 @@
 </head>
 <body>
   <div class="min-h-screen bg-gray-100 p-8">
-  <div class="flex justify-between items-center mb-8">
-    <div class="flex items-center gap-2">
-      <span class="text-xl">✦</span>
-      <h1 class="text-xl font-bold">Food ordering system</h1>
+    <div class="flex justify-between items-center mb-8">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">✦</span>
+        <h1 class="text-xl font-bold">Food ordering system</h1>
+      </div>
+      <button onclick="window.location.href = '/public/index.html'" class="border border-gray-400 px-4 py-1 rounded-md text-sm hover:bg-gray-200">
+        back to login
+      </button>
     </div>
-    <button onclick="window.location.href = '/public/index.html'" class="border border-gray-400 px-4 py-1 rounded-md text-sm hover:bg-gray-200">
-      back to login
-    </button>
-  </div>
 
-   <div class="flex justify-center mt-6 md:mt-10 px-4">
+    <div class="flex justify-center mt-6 md:mt-10 px-4">
       <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
           style="background-color: #1ac8db">menu
@@ -37,10 +37,23 @@
       </div>
     </div>
 
-  <div id="product_display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto px-4 mt-6">
-    
-</div>
-</div>
+    <div class="max-w-md mx-auto mt-8 px-4">
+        <div class="relative">
+            <input 
+                type="text" 
+                id="search_input" 
+                onkeyup="searchProduct()" 
+                placeholder="Search menu..." 
+                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm"
+            >
+            <span class="absolute left-4 top-2.5 text-gray-400">🔍</span>
+        </div>
+    </div>
+
+    <div id="product_display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto px-4 mt-6">
+        </div>
+  </div>
+
 <script>
   var products = [
     { "name": "Pad Thai", "price": 50, "image": "pad-thai.png" },
@@ -50,47 +63,56 @@
     { "name": "Tom Yum Soup", "price": 70, "image": "tom-yum-soup.png" },
     { "name": "Pad Krapow", "price": 45, "image": "pad-krapow.png" }
   ];
-  showProduct();
-  function showProduct() {
+
+  // เรียกใช้ครั้งแรกเพื่อแสดงทั้งหมด
+  showProduct('');
+
+  function showProduct(filterText) {
     let data = '';
-    products.forEach(function (product, index) {
-        data += `
-        <div class="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-100">
-       <div class="bg-slate-200 h-40 rounded-lg flex justify-center items-center mb-4 overflow-hidden">
-          <img class="w-full h-full object-cover" src="/view/${product.image}" alt="${product.name}">
-       </div>
-      <div class="flex justify-between items-center mb-4">
-        <span class="text-lg font-semibold">${product.name}</span>
-        <span class="text-lg font-semibold">${product.price} baht</span>
-      </div>
-      <div class="flex justify-center">
-       <div class="bg-white rounded-full px-6 py-2 flex items-center gap-6 shadow-sm border border-gray-100">
-         <button onclick="changeCount('count-${product.name}', -1,${index})" class="text-cyan-500 text-xl font-bold hover:text-black">-</button>
-         <span id="count-${product.name}" class="font-bold min-w-[20px] text-center">0</span>   
-         <button onclick="changeCount('count-${product.name}', 1,${index})" class="text-cyan-500 text-xl font-bold hover:text-black">+</button>
-       </div>
-      </div>
-    </div>
-    `;
-    });
-    document.querySelector('#product_display').innerHTML = data;
-}
-function changeCount(id, amount, index) {
-    // 1. หา Element ที่แสดงตัวเลขด้วย ID
-    const countElement = document.getElementById(id);
     
-    // 2. ดึงค่าปัจจุบันออกมาแปลงเป็นตัวเลข (Number)
-    let currentCount = parseInt(countElement.innerText);
-    
-    // 3. คำนวณค่าใหม่
-    let newCount = currentCount + amount;
-    
-    // 4. ตรวจสอบ: ถ้าค่าน้อยกว่า 0 ให้หยุดอยู่ที่ 0 (ไม่ให้ติดลบ)
-    if (newCount < 0) {
-      newCount = 0;
+    // กรองสินค้าตามตัวอักษรที่พิมพ์
+    const filteredProducts = products.filter(product => 
+        product.name.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    if (filteredProducts.length === 0) {
+        data = `<div class="col-span-full text-center py-10 text-gray-500">Menu not found.</div>`;
+    } else {
+        filteredProducts.forEach(function (product, index) {
+            data += `
+            <div class="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-100">
+               <div class="bg-slate-200 h-40 rounded-lg flex justify-center items-center mb-4 overflow-hidden">
+                  <img class="w-full h-full object-cover" src="/view/${product.image}" alt="${product.name}">
+               </div>
+              <div class="flex justify-between items-center mb-4">
+                <span class="text-lg font-semibold">${product.name}</span>
+                <span class="text-lg font-semibold">${product.price} baht</span>
+              </div>
+              <div class="flex justify-center">
+               <div class="bg-white rounded-full px-6 py-2 flex items-center gap-6 shadow-sm border border-gray-100">
+                 <button onclick="changeCount('count-${product.name}', -1)" class="text-cyan-500 text-xl font-bold hover:text-black">-</button>
+                 <span id="count-${product.name}" class="font-bold min-w-[20px] text-center">0</span>   
+                 <button onclick="changeCount('count-${product.name}', 1)" class="text-cyan-500 text-xl font-bold hover:text-black">+</button>
+               </div>
+              </div>
+            </div>
+            `;
+        });
     }
-    
-    // 5. แสดงผลค่าใหม่กลับไปที่หน้าเว็บ
+    document.querySelector('#product_display').innerHTML = data;
+  }
+
+  // ฟังก์ชันดักจับการพิมพ์ในช่อง Search
+  function searchProduct() {
+      const text = document.getElementById('search_input').value;
+      showProduct(text);
+  }
+
+  function changeCount(id, amount) {
+    const countElement = document.getElementById(id);
+    let currentCount = parseInt(countElement.innerText);
+    let newCount = currentCount + amount;
+    if (newCount < 0) newCount = 0;
     countElement.innerText = newCount;
   }
 </script>
