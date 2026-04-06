@@ -3,7 +3,6 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const app = express();
-const argon2 = require('argon2');
 const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
 
@@ -108,7 +107,7 @@ app.post('/cooks/register', async (req, res) => {
 // Cook Login
 app.post('/cooks/login', async (req, res) => {
     const { name, password } = req.body;
-    const sql = "SELECT employee_id, name, password_hash, role FROM cook WHERE name = ?";
+    const sql = "SELECT employee_id, name, password_hash FROM cook WHERE name = ?";
     
     try {
         const [results] = await db.query(sql, [name]);
@@ -125,7 +124,7 @@ app.post('/cooks/login', async (req, res) => {
 
         req.session.user_id = results[0].employee_id;
         req.session.username = results[0].name;
-        req.session.role = cook;
+        req.session.role = 'cook';
 
         if (results[0].role === 'cook') {
             res.send('/public/cooks/Dashdoard_cook.html');
