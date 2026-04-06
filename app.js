@@ -3,16 +3,14 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const app = express();
-<<<<<<< HEAD
-const session = require('express-session'); 
-=======
+const argon2 = require('argon2');
 const session = require('express-session');
->>>>>>> 701ba5678ea98c83f49ba59d5c0f54da328ada9e
+
 const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/public', express.static(path.join(__dirname, 'public')));
+
 // =========================================================
 // 🗄️ 1. DATABASE CONNECTION
 // =========================================================
@@ -20,6 +18,7 @@ const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: '',
+    port: 3307,
     database: 'database_webdev_course',
     waitForConnections: true,
     connectionLimit: 10,
@@ -74,6 +73,22 @@ app.post('/admin/signin', async (req, res) => {
 // ==========================================
 // 🧑‍🍳 3. COOK SECTION (ระบบกุ๊ก)
 // ==========================================
+// Logout และส่งกลับหน้า index.html
+app.get('/logout', (req, res) => {
+    // 1. ทำลาย Session ในฝั่ง Server
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('❌ Logout Error:', err);
+            return res.status(500).send('ไม่สามารถออกจากระบบได้');
+        }
+
+        // 2. ล้าง Cookie ที่ค้างอยู่ใน Browser
+        res.clearCookie('connect.sid');
+
+        // 3. ส่งกลับไปที่หน้า index.html 
+        res.redirect('/');
+    });
+});
 
 // Register Cook
 app.post('/cooks/register', async (req, res) => {
@@ -539,6 +554,7 @@ app.get('/cook/orders', (req, res) => {
     }res.sendFile(path.join(__dirname, 'public', 'index.html'));
   
 });
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
 app.get('/admin/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'lisCook_admin.html')));

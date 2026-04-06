@@ -14,9 +14,9 @@
         <span class="text-xl text-cyan-500">✦</span>
         <h1 class="text-lg md:text-xl font-bold text-gray-800">Food ordering system</h1>
       </div>
-      <button onclick="window.location.href = '/public/index.html'"
+      <button onclick="logout()"
         class="border border-gray-300 rounded-xl px-4 py-1.5 text-xs md:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all active:scale-95">
-        Back to login
+        Logout
       </button>
     </nav>
 
@@ -126,6 +126,11 @@
           .then(renderOrders)
           .catch(() => ordersList.innerHTML = '<div class="text-center text-red-500 py-10">Error loading orders</div>');
       }
+
+    function logout() {
+    // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
+    window.location.href = '/logout';
+}
 
 
       fetchOrders();

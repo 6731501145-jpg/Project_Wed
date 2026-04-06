@@ -217,3 +217,8 @@ function closeModal(modalId) {
 function closeModalOutside(e, modalId) {
     if (e.target.id === modalId) closeModal(modalId);
 }
+
+function logout() {
+    // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
+    window.location.href = '/logout';
+}
