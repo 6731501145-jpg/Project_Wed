@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </head>
+  <body class="bg-base-100 min-h-screen flex flex-col">
+    <!-- ══ NAVBAR ══ -->
+    <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
+      <div class="flex-1 flex items-center gap-2">
+        <span class="text-xl">✦</span>
+        <span class="font-bold text-base md:text-lg">Food ordering system</span>
+      </div>
+      <div class="flex-none">
+        <button
+          class="btn btn-outline btn-sm rounded-xl text-sm"
+          onclick="window.location.href = '/public/index.html'"
+        >
+          back to Home
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ CENTERED FORM ══ -->
+    <div class="flex flex-1 items-center justify-center px-4 py-12">
+      <div class="w-full max-w-md">
+        <h1 class="text-3xl font-bold mb-8">Get Started Now</h1>
+
+        <!-- Name -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium mb-1">Name</label>
+          <input
+            id="name"
+            type="text"
+            placeholder="Enter your name"
+            class="input input-bordered w-full rounded-lg text-sm"
+          />
+        </div>
+
+        <!-- ID -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium mb-1">ID</label>
+          <input
+            id="empId"
+            type="text"
+            placeholder="Enter your id"
+            class="input input-bordered w-full rounded-lg text-sm"
+          />
+        </div>
+
+        <!-- Password -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium mb-1">Password</label>
+          <div class="relative">
+            <input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              class="input input-bordered w-full rounded-lg text-sm pr-10"
+            />
+            <button
+              type="button"
+              onclick="toggleVisibility('password', 'eyeIcon1')"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content transition-colors"
+            >
+              <svg id="eyeIcon1" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-1">Confirm Password</label>
+          <div class="relative">
+            <input
+              id="confirmPassword"
+              type="password"
+              placeholder="Confirm your password"
+              class="input input-bordered w-full rounded-lg text-sm pr-10"
+              oninput="checkMatch()"
+            />
+            <button
+              type="button"
+              onclick="toggleVisibility('confirmPassword', 'eyeIcon2')"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content transition-colors"
+            >
+              <svg id="eyeIcon2" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+          <!-- Match hint -->
+          <p id="matchHint" class="text-xs mt-1 min-h-4"></p>
+        </div>
+
+        <!-- Register button -->
+        <button
+          onclick="doRegister()"
+          class="btn w-full rounded-lg text-white font-semibold text-base"
+          style="background-color: #1ac8db; border: none"
+        >
+          register
+        </button>
+
+        <!-- Divider -->
+        <div class="divider text-xs text-base-content/40 my-5">Or</div>
+
+        <!-- Link to login -->
+        <p class="text-center text-sm text-base-content/70">
+          Have an account?&nbsp;
+          <a
+            href="login_cooks.html"
+            class="font-semibold cursor-pointer"
+            style="color: #1ac8db"
+            >Sign In</a
+          >
+        </p>
+      </div>
+    </div>
+
+    <script>
+      /* ── Toggle password visibility ── */
+      function toggleVisibility(inputId, iconId) {
+        const input  = document.getElementById(inputId);
+        const icon   = document.getElementById(iconId);
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        icon.innerHTML = isHidden
+          ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878 l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59 m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>`
+          : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+      }
+
+      /* ── Real-time password match hint ── */
+      function checkMatch() {
+        const pwd  = document.getElementById('password').value;
+        const cpwd = document.getElementById('confirmPassword').value;
+        const hint = document.getElementById('matchHint');
+        if (!cpwd) { hint.textContent = ''; return; }
+        if (pwd === cpwd) {
+          hint.textContent   = '✓ Passwords match';
+          hint.style.color   = '#16a34a';
+        } else {
+          hint.textContent   = '✗ Passwords do not match';
+          hint.style.color   = '#dc2626';
+        }
+      }
+
+      /* ── Register เชื่อม Database ── */
+      async function doRegister() {
+        const name = document.getElementById('name').value.trim();
+        const id   = document.getElementById('empId').value.trim();
+        const pwd  = document.getElementById('password').value;
+        const cpwd = document.getElementById('confirmPassword').value;
+
+        // เช็คข้อมูลครบถ้วน
+        if (!name || !id || !pwd || !cpwd) {
+          Swal.fire({ icon: 'warning', title: 'Incomplete', text: 'Please fill in all fields', confirmButtonColor: '#1AC8DB' });
+          return;
+        }
+
+        if (pwd.length < 4) { // ปรับความยาวรหัสผ่านตามความเหมาะสม
+          Swal.fire({ icon: 'warning', title: 'Password too short', text: 'Password must be at least 4 characters', confirmButtonColor: '#1AC8DB' });
+          return;
+        }
+
+        if (pwd !== cpwd) {
+          Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match.', confirmButtonColor: '#1AC8DB' });
+          return;
+        }
+
+        try {
+          // ส่งข้อมูลไปบันทึกที่ Database ผ่าน API
+          const response = await fetch('http://localhost:3000/cooks/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cook_id: id, name: name, password: pwd })
+          });
+
+          if (response.ok) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Registered!',
+              html: `<b>Name:</b> ${name}<br><b>ID:</b> ${id}`,
+              confirmButtonColor: '#1AC8DB',
+              confirmButtonText: 'Go to Sign In',
+            }).then(() => {
+              window.location.href = 'Login_cooks.html';
+            });
+          } else {
+            const errorText = await response.text();
+            Swal.fire({ icon: 'error', title: 'Registration Failed', text: errorText, confirmButtonColor: '#1AC8DB' });
+          }
+        } catch (error) {
+          console.error(error);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: '#1AC8DB' });
+        }
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doRegister();
+      });
+    </script>
+  </body>
+</html>
