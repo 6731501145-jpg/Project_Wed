@@ -125,7 +125,7 @@ app.post('/cooks/login', async (req, res) => {
 
         req.session.user_id = results[0].employee_id;
         req.session.username = results[0].name;
-        req.session.role = results[0].role;
+        req.session.role = cook;
 
         if (results[0].role === 'cook') {
             res.send('/public/cooks/Dashdoard_cook.html');
