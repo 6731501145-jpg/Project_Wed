@@ -222,3 +222,30 @@ function logout() {
     // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
     window.location.href = '/logout';
 }
+fetch('/api/get-orders')
+    .then(response => {
+        if (response.status === 401 || response.status === 403) {
+            // ถ้า Server บอกว่าไม่มีสิทธิ์ หรือ Session หมด
+            window.location.href = '/'; 
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        // แสดงผลข้อมูลตามปกติ
+    });
+    // ตรวจสอบ Session ทุกครั้งที่โหลดหน้า
+async function checkAuth() {
+    try {
+        const res = await fetch('/user/info');
+        if (!res.ok) {
+            // ถ้า Status ไม่ใช่ 200 (เช่น 401) ให้ดีดไปหน้า login
+            window.location.href = '/';
+        }
+    } catch (err) {
+        window.location.href = '/';
+    }
+}
+
+// เรียกใช้ทันทีที่เปิดหน้า
+checkAuth();

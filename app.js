@@ -7,7 +7,7 @@ const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
-// app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/view', express.static(path.join(__dirname, 'view')));
 
 // =========================================================
@@ -18,7 +18,7 @@ const db = mysql.createPool({
     user: 'root',
     password: '',
     database: 'database_webdev_course',
-    port: 3306,
+    port: 3307,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -75,11 +75,13 @@ app.post('/admin/signin', async (req, res) => {
 // Logout และส่งกลับหน้า index.html
 app.get('/logout', (req, res) => {
     req.session.destroy((err) => {
-        if(err) {
-            console.log(err);
-            res.status(500).send('Cannot delete session!');
-        }
-        res.redirect('/');
+        if (err) return res.status(500).send('Cannot logout');
+        
+        // ลบคุกกี้ชื่อ connect.sid (ชื่อมาตรฐานของ express-session)
+        res.clearCookie('connect.sid'); 
+        
+        // ส่งกลับหน้าแรก
+        res.redirect('/'); 
     });
 });
 
@@ -123,9 +125,9 @@ app.post('/cooks/login', async (req, res) => {
         req.session.role = 'cook';
 
         if (req.session.role === 'cook') {
-            res.send('/view/cooks/Dashdoard_cook.html');
+            res.send('/cook/dashboard');
         } else {
-            res.send('/view/index.html');
+            res.send('/');
         }
 
     } catch (err) {
@@ -544,19 +546,25 @@ app.get('/api/admin/order/history', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'view')));
 app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'Menu_customers.html')));
 app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
-const isAdmin = (req, res, next) => {
-    if (req.session && req.session.role === 'cook') {
-        next(); // ถ้าเป็น cook ให้ไปต่อได้
+// ฟังก์ชันเช็คสิทธิ์แบบละเอียด
+const isAuth = (req, res, next) => {
+    // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+    // 2. เช็คว่ามี Session หรือไม่
+    if (req.session.user_id) {
+        return next(); // ถ้ามี ให้ไปต่อได้
     } else {
-        res.redirect('/'); // ถ้าไม่ใช่ ให้เตะกลับไปหน้าแรก
+        // 3. ถ้าไม่มี ให้ดีดกลับไปหน้า Login ทันที
+        return res.redirect('/'); 
     }
 };
 // ใช้ isAdmin เข้ามาคั่นกลางก่อนจะส่งไฟล์
-app.get('/cook/dashboard', isAdmin, (req, res) => {
+app.get('/cook/dashboard', isAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'cooks', 'Dashdoard_cook.html'));
 });
 
-app.get('/cook/orders', isAdmin, (req, res) => {
+app.get('/cook/orderoper', isAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'cooks', 'Order_cook.html'));
 });
 app.get('/', (req, res) => {
