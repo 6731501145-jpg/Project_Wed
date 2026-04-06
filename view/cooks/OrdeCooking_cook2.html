@@ -121,7 +121,8 @@
 
       function fetchOrders() {
         ordersList.innerHTML = '<div class="text-center text-gray-400 py-10">Loading...</div>';
-        fetch(`${API_BASE}/cook/order?status=${statusFilter}`)
+        // API endpoint on the server is `/cook/orders` (plural)
+        fetch(`${API_BASE}/cook/orders?status=${statusFilter}`)
           .then(res => res.json())
           .then(renderOrders)
           .catch(() => ordersList.innerHTML = '<div class="text-center text-red-500 py-10">Error loading orders</div>');

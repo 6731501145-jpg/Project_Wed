@@ -135,7 +135,8 @@
 
       function fetchOrders() {
         ordersList.innerHTML = '<div class="text-center text-gray-400 py-10">Loading...</div>';
-        const url = statusFilter ? `${API_BASE}/cook/order?status=${statusFilter}` : `${API_BASE}/cook/order`;
+        // API endpoint on the server is `/cook/orders` (plural)
+        const url = statusFilter ? `${API_BASE}/cook/orders?status=${statusFilter}` : `${API_BASE}/cook/orders`;
         fetch(url)
           .then(res => res.json())
           .then(renderOrders)
