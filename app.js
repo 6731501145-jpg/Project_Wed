@@ -3,6 +3,8 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const app = express();
+const session = require('express-session');
+const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
