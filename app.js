@@ -125,7 +125,7 @@ app.post('/cooks/login', async (req, res) => {
 
         req.session.user_id = results[0].employee_id;
         req.session.username = results[0].name;
-        req.session.role = cook;
+        req.session.role = 'cook';
 
         if (results[0].role === 'cook') {
             res.send('/public/cooks/Dashdoard_cook.html');
@@ -556,4 +556,3 @@ app.get('/admin/order/history', (req, res) => {res.status(200).sendFile(path.joi
 
 
 app.listen(3000, () => console.log('🚀 Server running on http://localhost:3000'));
-// =========================================================
