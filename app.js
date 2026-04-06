@@ -7,7 +7,8 @@ const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/view', express.static(path.join(__dirname, 'view')));
 
 // =========================================================
 // 🗄️ 1. DATABASE CONNECTION
@@ -113,13 +114,13 @@ app.post('/cooks/login', async (req, res) => {
         const [results] = await db.query(sql, [name]);
 
         if (results.length !== 1) {
-            return res.status(401).send('Wrong Name or Password');
+            return res.status(401).send('Wrong Name');
         }
 
         const isMatch = await bcrypt.compare(password, results[0].password_hash);
         
         if (!isMatch) {
-            return res.status(401).send('Wrong Name or Password');
+            return res.status(401).send('Wrong Password');
         }
 
         req.session.user_id = results[0].employee_id;
