@@ -190,6 +190,45 @@ app.get('/cook/orders', async (req, res) => {
     }
 });
 
+// ดึงรายการออเดอร์ตามสถานะ (รองรับ query ?status=pending/cooking/serving)
+app.get('/cook/order', async (req, res) => {
+    const { status } = req.query;
+    const validStatus = ['pending', 'cooking', 'serving'];
+
+    // สร้าง where clause แบบเลือกได้
+    const whereClause = validStatus.includes(status) ? 'WHERE o.status = ?' : '';
+    const params = validStatus.includes(status) ? [status] : [];
+
+    try {
+        const sql = `
+            SELECT o.order_id, t.table_number, o.status, m.name AS menu_name, COUNT(oi.menu_id) AS quantity
+            FROM \`order\` o
+            JOIN \`table\` t ON o.table_id = t.table_id
+            JOIN order_item oi ON o.order_id = oi.order_id
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            ${whereClause}
+            GROUP BY o.order_id, m.menu_id
+        `;
+        const [rows] = await db.query(sql, params);
+
+        const orders = {};
+        rows.forEach(row => {
+            if (!orders[row.order_id]) {
+                orders[row.order_id] = {
+                    order_id: row.order_id,
+                    table_number: row.table_number,
+                    status: row.status,
+                    items: []
+                };
+            }
+            orders[row.order_id].items.push({ menu_name: row.menu_name, quantity: row.quantity });
+        });
+        res.status(200).json(Object.values(orders));
+    } catch (error) {
+        res.status(500).send('Server error');
+    }
+});
+
 // ดูรายละเอียดออเดอร์เดี่ยว
 app.get('/cook/order/:id', async (req, res) => {
     try {
