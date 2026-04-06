@@ -226,7 +226,7 @@ app.patch('/cook/order/:id/status', async (req, res) => {
 // ออเดอร์ที่เสิร์ฟแล้ววันนี้ dashboard
 app.get('/api/cook/order/today', async (req, res) => {
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT COUNT(oi.order_item_id) as total_qty 
             FROM order_item oi 
             JOIN \`order\` o ON oi.order_id = o.order_id 
@@ -241,7 +241,7 @@ app.get('/api/cook/order/today', async (req, res) => {
 // top-menu dashboard
 app.get('/api/cook/top-menus/today', async (req, res) => {
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT m.menu_id as id, m.name, m.image_url as image, COUNT(oi.order_item_id) as total_qty
             FROM \`order\` o
             JOIN order_item oi ON o.order_id = oi.order_id
@@ -259,7 +259,7 @@ app.get('/api/cook/top-menus/today', async (req, res) => {
 // reviewa dashboard
 app.get('/api/cook/review/today', async (req, res) => {
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT r.review_id as id, c.username as customer_name, r.rating, r.comment, r.created_at as date
             FROM review r
             JOIN payment p ON r.payment_id = p.payment_id
@@ -419,9 +419,9 @@ app.get('/api/admin/summary', async (req, res) => {
     }
 
     try {
-        const [nowRes] = await pool.query(`SELECT COUNT(DISTINCT customer_id) as customer_now FROM \`order\` WHERE DATE(order_time) = CURDATE() AND status IN ('serving')`);
-        const [custRes] = await pool.query(`SELECT COUNT(DISTINCT customer_id) as total_customers FROM \`order\` WHERE order_time BETWEEN ? AND ?`, [start, end]);
-        const [revRes] = await pool.query(`SELECT SUM(total_price) as total_revenue FROM \`order\` WHERE order_time BETWEEN ? AND ?`, [start, end]);
+        const [nowRes] = await db.query(`SELECT COUNT(DISTINCT customer_id) as customer_now FROM \`order\` WHERE DATE(order_time) = CURDATE() AND status IN ('serving')`);
+        const [custRes] = await db.query(`SELECT COUNT(DISTINCT customer_id) as total_customers FROM \`order\` WHERE order_time BETWEEN ? AND ?`, [start, end]);
+        const [revRes] = await db.query(`SELECT SUM(total_price) as total_revenue FROM \`order\` WHERE order_time BETWEEN ? AND ?`, [start, end]);
 
         res.status(200).json({
             customer_now: nowRes[0].customer_now || 0,
@@ -441,7 +441,7 @@ app.get('/api/admin/top-menus', async (req, res) => {
     }
 
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT m.menu_id as id, m.name, m.image_url as image, COUNT(oi.order_item_id) as total_qty
             FROM \`order\` o
             JOIN order_item oi ON o.order_id = oi.order_id
@@ -464,7 +464,7 @@ app.get('/api/admin/reviews', async (req, res) => {
     }
 
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT r.review_id as id, c.username as customer_name, r.rating, r.comment, r.created_at as date
             FROM review r
             JOIN customer c ON r.customer_id = c.customer_id
@@ -479,7 +479,7 @@ app.get('/api/admin/reviews', async (req, res) => {
 
 app.get('/api/admin/order/now', async (req, res) => {
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT 
                 m.name as menu_names,
                 o.order_time as time,
@@ -503,7 +503,7 @@ app.get('/api/admin/order/now', async (req, res) => {
 
 app.get('/api/admin/order/history', async (req, res) => {
     try {
-        const [rows] = await pool.query(`
+        const [rows] = await db.query(`
             SELECT 
                 GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as menu_names,
                 o.order_time as date,
