@@ -158,20 +158,28 @@ app.get('/user/info', (req, res) => {
 });
 
 // ดึงรายการออเดอร์ทั้งหมดที่ยังไม่เสร็จ (พร้อมจัดกลุ่มรายการอาหาร)
-app.get('/cook/orders', async (req, res) => {
+app.get('/cook/order', async (req, res) => {
     try {
-        const sql = `
+        const { status } = req.query; // รับค่า 'pending' จาก Query String
+        
+        let sql = `
             SELECT o.order_id, t.table_number, o.status, m.name AS menu_name, COUNT(oi.menu_id) AS quantity
             FROM \`order\` o
             JOIN \`table\` t ON o.table_id = t.table_id
             JOIN order_item oi ON o.order_id = oi.order_id
             JOIN menu_item m ON oi.menu_id = m.menu_id
-            WHERE o.status != 'serving'
-            GROUP BY o.order_id, m.menu_id
         `;
-        const [rows] = await db.query(sql);
+
+        // ถ้ามีการส่ง status มา (เช่น ?status=pending) ให้กรองข้อมูล
+        if (status) {
+            sql += ` WHERE o.status = ? `;
+        }
         
-        // จัดโครงสร้างข้อมูลใหม่ให้อ่านง่าย (Object Grouping)
+        sql += ` GROUP BY o.order_id, m.menu_id `;
+
+        const [rows] = await db.query(sql, status ? [status] : []);
+        
+        // --- ส่วนการจัดกลุ่มข้อมูล (Grouping) ---
         const orders = {};
         rows.forEach(row => {
             if (!orders[row.order_id]) {
@@ -182,10 +190,15 @@ app.get('/cook/orders', async (req, res) => {
                     items: []
                 };
             }
-            orders[row.order_id].items.push({ menu_name: row.menu_name, quantity: row.quantity });
+            orders[row.order_id].items.push({ 
+                menu_name: row.menu_name, 
+                quantity: row.quantity 
+            });
         });
+        
         res.status(200).json(Object.values(orders));
     } catch (error) {
+        console.error(error);
         res.status(500).send('Server error');
     }
 });
@@ -542,7 +555,7 @@ app.get('/cook/dashboard', (req, res) => {
 });
 app.get('/cook/orders', (req, res) => {
     if(req.session.role === 'cook') {
-        return res.redirect('/cooks/Order_cook.html');
+        return res.redirect('/public/cooks/Order_cook.html');
     }res.sendFile(path.join(__dirname, 'public', 'index.html'));
   
 });
