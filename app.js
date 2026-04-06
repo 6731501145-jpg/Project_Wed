@@ -127,7 +127,7 @@ app.post('/cooks/login', async (req, res) => {
         req.session.username = results[0].name;
         req.session.role = 'cook';
 
-        if (results[0].role === 'cook') {
+        if (req.session.role === 'cook') {
             res.send('/public/cooks/Dashdoard_cook.html');
         } else {
             res.send('/public/index.html');
@@ -547,7 +547,6 @@ app.get('/cook/orders', (req, res) => {
   
 });
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
 app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
 app.get('/admin/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'lisCook_admin.html')));
 app.get('/admin/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_admin.html'));});
