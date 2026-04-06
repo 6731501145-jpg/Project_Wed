@@ -126,6 +126,24 @@ app.post('/cooks/login', async (req, res) => {
     }
 });
 
+// get cook/user info from session
+app.get('/user/info', (req, res) => {
+    // 1. ตรวจสอบว่ามีการ Login หรือไม่
+    if (!req.session.user_id) {
+        return res.status(401).json({ error: 'Unauthorized: Please login first' });
+    }
+
+    // 2. ดึงข้อมูลจาก Session ออกมาส่งให้ Front-end
+    const { user_id, username, role } = req.session;
+
+    // 3. ส่งข้อมูลกลับไปในรูปแบบ JSON
+    res.status(200).json({
+        user_id,
+        username,
+        role
+    });
+});
+
 // ดึงรายการออเดอร์ทั้งหมดที่ยังไม่เสร็จ (พร้อมจัดกลุ่มรายการอาหาร)
 app.get('/cook/orders', async (req, res) => {
     try {
