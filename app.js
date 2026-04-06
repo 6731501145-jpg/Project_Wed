@@ -5,7 +5,6 @@ const bcrypt = require('bcrypt');
 const app = express();
 const argon2 = require('argon2');
 const session = require('express-session');
-
 const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
@@ -18,7 +17,6 @@ const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: '',
-    port: 3307,
     database: 'database_webdev_course',
     waitForConnections: true,
     connectionLimit: 10,
@@ -59,11 +57,11 @@ app.get('/password/:raw', async (req, res) => {
 // Admin Login
 app.post('/admin/signin', async (req, res) => {
     try {
-        const { admin_id, password } = req.body;
-        const [rows] = await db.query('SELECT * FROM admin WHERE username = ?', [admin_id]);
-        if (rows.length === 0) return res.status(401).send('Wrong Name or Password');
+        const { admin_username, password } = req.body;
+        const [rows] = await db.query('SELECT * FROM admin WHERE username = ?', [admin_username]);
+        if (rows.length === 0) return res.status(401).send('Wrong Name');
         const isMatch = await bcrypt.compare(password, rows[0].password_hash);
-        if (!isMatch) return res.status(401).send('Wrong Name or Password');
+        if (!isMatch) return res.status(401).send('Wrong Password');
         res.status(200).send('/public/admin/Dashdoard_admin.html');
     } catch (error) {
         res.status(500).send('Server error');
@@ -109,35 +107,29 @@ app.post('/cooks/register', async (req, res) => {
 
 // Cook Login
 app.post('/cooks/login', async (req, res) => {
-    const { cook_id, password } = req.body;
-    // ปรับ SQL ให้ตรงกับโครงสร้างตาราง cook
-    const sql = "SELECT employee_id, password_hash, role FROM cook WHERE employee_id = ?";
+    const { name, password } = req.body;
+    const sql = "SELECT employee_id, name, password_hash, role FROM cook WHERE name = ?";
     
     try {
-        const [results] = await db.query(sql, [cook_id]);
+        const [results] = await db.query(sql, [name]);
 
         if (results.length !== 1) {
-            return res.status(401).send('Wrong CooksID or Password');
+            return res.status(401).send('Wrong Name or Password');
         }
 
-        // ใช้ argon2 ในการตรวจสอบรหัสผ่าน (ตามแบบโค้ดหลัก)
-        // หมายเหตุ: ตรวจสอบว่าในฐานข้อมูลเก็บเป็น argon2 hash หรือ bcrypt
-        const isMatch = await argon2.verify(results[0].password_hash, password);
+        const isMatch = await bcrypt.compare(password, results[0].password_hash);
         
         if (!isMatch) {
-            return res.status(401).send('Wrong CooksID or Password');
+            return res.status(401).send('Wrong Name or Password');
         }
 
-        // สร้าง Session เพื่อรักษาการ Login
         req.session.user_id = results[0].employee_id;
-        req.session.username = cook_id;
-        req.session.role = results[0].role; // หรือกำหนดเป็น 'cook' ตายตัวถ้าไม่มีคอลัมน์ role
+        req.session.username = results[0].name;
+        req.session.role = results[0].role;
 
-        // ตรวจสอบ Role เพื่อนำทาง (Navigation)
         if (results[0].role === 'cook') {
             res.send('/public/cooks/Dashdoard_cook.html');
         } else {
-            // กรณีมี role อื่นๆ หรือค่าเริ่มต้น
             res.send('/public/index.html');
         }
 
