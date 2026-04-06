@@ -3,11 +3,10 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const app = express();
-<<<<<<< HEAD
+// <<<<<<< HEAD
 const session = require('express-session'); 
-=======
-const session = require('express-session');
->>>>>>> 701ba5678ea98c83f49ba59d5c0f54da328ada9e
+
+// >>>>>>> 701ba5678ea98c83f49ba59d5c0f54da328ada9e
 const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
@@ -60,11 +59,11 @@ app.get('/password/:raw', async (req, res) => {
 // Admin Login
 app.post('/admin/signin', async (req, res) => {
     try {
-        const { admin_id, password } = req.body;
-        const [rows] = await db.query('SELECT * FROM admin WHERE username = ?', [admin_id]);
-        if (rows.length === 0) return res.status(401).send('Wrong Name or Password');
+        const { admin_username, password } = req.body;
+        const [rows] = await db.query('SELECT * FROM admin WHERE username = ?', [admin_username]);
+        if (rows.length === 0) return res.status(401).send('Wrong Name');
         const isMatch = await bcrypt.compare(password, rows[0].password_hash);
-        if (!isMatch) return res.status(401).send('Wrong Name or Password');
+        if (!isMatch) return res.status(401).send('Wrong Password');
         res.status(200).send('/public/admin/Dashdoard_admin.html');
     } catch (error) {
         res.status(500).send('Server error');
