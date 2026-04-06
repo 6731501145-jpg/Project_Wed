@@ -74,17 +74,11 @@ app.post('/admin/signin', async (req, res) => {
 // ==========================================
 // Logout และส่งกลับหน้า index.html
 app.get('/logout', (req, res) => {
-    // 1. ทำลาย Session ในฝั่ง Server
     req.session.destroy((err) => {
-        if (err) {
-            console.error('❌ Logout Error:', err);
-            return res.status(500).send('ไม่สามารถออกจากระบบได้');
+        if(err) {
+            console.log(err);
+            res.status(500).send('Cannot delete session!');
         }
-
-        // 2. ล้าง Cookie ที่ค้างอยู่ใน Browser
-        res.clearCookie('connect.sid');
-
-        // 3. ส่งกลับไปที่หน้า index.html 
         res.redirect('/');
     });
 });
@@ -550,16 +544,20 @@ app.get('/api/admin/order/history', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'view')));
 app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'Menu_customers.html')));
 app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
-app.get('/cook/dashboard', (req, res) => {
-    if(req.session.role === 'cook') {
-        return res.redirect('/cooks/Dashdoard_cook.html');
-    }res.sendFile(path.join(__dirname, 'view', 'index.html'));
+const isAdmin = (req, res, next) => {
+    if (req.session && req.session.role === 'cook') {
+        next(); // ถ้าเป็น cook ให้ไปต่อได้
+    } else {
+        res.redirect('/'); // ถ้าไม่ใช่ ให้เตะกลับไปหน้าแรก
+    }
+};
+// ใช้ isAdmin เข้ามาคั่นกลางก่อนจะส่งไฟล์
+app.get('/cook/dashboard', isAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'cooks', 'Dashdoard_cook.html'));
 });
 
-app.get('/cook/orders', (req, res) => {
-    if(req.session.role === 'cook') {
-        return res.redirect('/view/cooks/Order_cook.html');
-    }res.sendFile(path.join(__dirname, 'view', 'index.html'));
+app.get('/cook/orders', isAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'cooks', 'Order_cook.html'));
 });
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

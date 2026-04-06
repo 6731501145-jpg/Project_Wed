@@ -128,6 +128,8 @@
       }
 
     function logout() {
+      localStorage.clear(); 
+    sessionStorage.clear();
     // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
     window.location.href = '/logout';
 }
