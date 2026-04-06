@@ -3,6 +3,8 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const app = express();
+const session = require('express-session'); 
+const MemoryStore = require('memorystore')(session);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -524,13 +526,13 @@ app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
 app.get('/cook/dashboard', (req, res) => {
     if(req.session.role === 'cook') {
-        return res.redirect('/public/cooks/Dashdoard_cook.html');
-    }res.sendFile(path.join(__dirname, '/public/index.html'));
+        return res.redirect('/cooks/Dashdoard_cook.html');
+    }res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.get('/cook/orders', (req, res) => {
     if(req.session.role === 'cook') {
-        return res.redirect('/public/cooks/Order_cook.html');
-    }res.sendFile(path.join(__dirname, '/public/index.html'));
+        return res.redirect('/cooks/Order_cook.html');
+    }res.sendFile(path.join(__dirname, 'public', 'index.html'));
   
 });
 
