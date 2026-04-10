@@ -16,7 +16,7 @@
       <div class="flex-none">
         <button
           class="btn btn-outline btn-sm rounded-xl text-sm"
-          onclick="window.location.href = '/public/customers/Login_customers.html'"
+          onclick="window.location.href = '/view/customers/Login_customers.html'"
         >
           back to login
         </button>
@@ -25,16 +25,16 @@
 
     <div class="flex justify-center mt-6 md:mt-10 px-4">
       <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
-        <a href="/public/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/view/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           menu
         </a>
-        <a href="/public/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/view/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           cart
         </a>
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default" style="background-color: #1ac8db">
           check
         </span>
-        <a href="/public/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           payment
         </a>
       </div>
@@ -64,7 +64,7 @@
           el.innerHTML = `
             <div class="text-center py-16 text-base-content/40">
               <p class="text-sm text-error">Please login first.</p>
-              <button class="btn btn-sm mt-4" onclick="window.location.href='/public/customers/Login_customers.html'">Go to Login</button>
+              <button class="btn btn-sm mt-4" onclick="window.location.href='/view/customers/Login_customers.html'">Go to Login</button>
             </div>`;
           return;
         }
