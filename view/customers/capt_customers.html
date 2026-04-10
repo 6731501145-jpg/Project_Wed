@@ -51,7 +51,7 @@
 <div class="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-white via-white/80 to-transparent z-50">
   <div class="max-w-4xl mx-auto flex justify-center">
     
-    <button class="w-full md:w-64 bg-[#6EE76E] hover:bg-[#5cd65c] text-white py-3 rounded-full text-xl font-bold shadow-md flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 active:shadow-inner">
+    <button id="orderBtn" class="w-full md:w-64 bg-[#6EE76E] hover:bg-[#5cd65c] text-white py-3 rounded-full text-xl font-bold shadow-md flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 active:shadow-inner">
       ORDER
       <span class="text-2xl">→</span>
     </button>
@@ -81,69 +81,137 @@
 </div>
 
 <script>
-  var products = [
-    { "name": "Pad Thai", "price": 50, "amount": "2" },
-    { "name": "Fried Rice", "price": 45, "amount": "2" },
-    { "name": "Omelet", "price": 40, "amount": "2" },
-  ];
-  showProduct();
- function showProduct() {
-  let data = '';
-  products.forEach(function (product, index) {
-    data += `
-    <div class="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-50 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 gap-3 mb-3">
-      <div class="flex-1 w-full flex items-center">
-        <span class="text-base md:text-lg font-medium text-gray-800">${product.name}</span>
-      </div>
-      <div class="flex items-center justify-between md:justify-end w-full md:w-auto gap-4 md:gap-8">
-        <div class="flex items-baseline gap-1">
-          <span class="text-lg md:text-xl font-bold text-cyan-500">${(product.price * product.amount).toLocaleString()}</span>
-          <span class="text-sm font-medium">THB</span>
-        </div>
-        
-        <div class="bg-white rounded-full px-4 py-2 md:px-5 md:py-2.5 flex items-center justify-center gap-4 md:gap-5 shadow-inner border border-gray-100">
-          <button onclick="changeCount(${index}, -1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">-</button>
-          <span class="font-bold text-sm md:text-lg w-4 md:w-6 text-center">${product.amount}</span>
-          <button onclick="changeCount(${index}, 1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">+</button>
-        </div>
-      </div>
-    </div>`;
-  });
-  document.querySelector('#orderList').innerHTML = data;
-}
-let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
+  const API_BASE = 'http://localhost:3000';
+  let cart = JSON.parse(localStorage.getItem('customer_cart') || '[]');
+  let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
 
-function changeCount(index, amount) {
-    let currentCount = parseInt(products[index].amount);
+  document.addEventListener('DOMContentLoaded', () => {
+    renderCart();
+  });
+
+  function renderCart() {
+    const listEl = document.querySelector('#orderList');
+
+    if (!cart.length) {
+      listEl.innerHTML = `
+        <div class="text-center py-12 text-base-content/40">
+          <div class="text-5xl mb-3">🛒</div>
+          <p class="text-sm">No items in your cart yet.</p>
+        </div>`;
+      return;
+    }
+
+    const cards = cart.map((product, index) => `
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-50 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 gap-3 mb-3">
+        <div class="flex-1 w-full flex items-center">
+          <span class="text-base md:text-lg font-medium text-gray-800">${product.name}</span>
+        </div>
+        <div class="flex items-center justify-between md:justify-end w-full md:w-auto gap-4 md:gap-8">
+          <div class="flex items-baseline gap-1">
+            <span class="text-lg md:text-xl font-bold text-cyan-500">${(product.price * product.qty).toLocaleString()}</span>
+            <span class="text-sm font-medium">THB</span>
+          </div>
+          
+          <div class="bg-white rounded-full px-4 py-2 md:px-5 md:py-2.5 flex items-center justify-center gap-4 md:gap-5 shadow-inner border border-gray-100">
+            <button onclick="changeCount(${index}, -1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">-</button>
+            <span class="font-bold text-sm md:text-lg w-4 md:w-6 text-center">${product.qty}</span>
+            <button onclick="changeCount(${index}, 1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">+</button>
+          </div>
+        </div>
+      </div>`).join('');
+
+    listEl.innerHTML = cards;
+  }
+
+  function changeCount(index, amount) {
+    let currentCount = parseInt(cart[index].qty);
     let newCount = currentCount + amount;
 
     if (newCount <= 0) {
         openModal(index);
     } else {
-        products[index].amount = newCount;
-        showProduct();
+        cart[index].qty = newCount;
+        persistCart();
+        renderCart();
     }
-}
+  }
 
-// ฟังก์ชันเปิดป๊อปอัพ
-function openModal(index) {
-    indexToDelete = index; // จำไว้ว่าจะลบตัวไหน
-    document.getElementById('deleteModal').classList.remove('hidden');
-}
+  function persistCart() {
+    localStorage.setItem('customer_cart', JSON.stringify(cart));
+  }
 
-// ฟังก์ชันปิดป๊อปอัพ
-function closeModal() {
-    document.getElementById('deleteModal').classList.add('hidden');
-}
+  // ฟังก์ชันเปิดป๊อปอัพ
+  function openModal(index) {
+      indexToDelete = index; // จำไว้ว่าจะลบตัวไหน
+      document.getElementById('deleteModal').classList.remove('hidden');
+  }
 
-// เมื่อกดปุ่ม "ลบทันที" ในป๊อปอัพ
-document.getElementById('confirmDeleteBtn').onclick = function() {
-    if (indexToDelete !== null) {
-        products.splice(indexToDelete, 1); // ลบออกจาก Array
-        closeModal(); // ปิดป๊อปอัพ
-        showProduct(); // วาดหน้าจอใหม่
+  // ฟังก์ชันปิดป๊อปอัพ
+  function closeModal() {
+      document.getElementById('deleteModal').classList.add('hidden');
+  }
+
+  // เมื่อกดปุ่ม "ลบทันที" ในป๊อปอัพ
+  document.getElementById('confirmDeleteBtn').onclick = function() {
+      if (indexToDelete !== null) {
+          cart.splice(indexToDelete, 1); // ลบออกจาก Array
+          persistCart();
+          closeModal(); // ปิดป๊อปอัพ
+          renderCart(); // วาดหน้าจอใหม่
+      }
+  };
+
+  document.getElementById('orderBtn').addEventListener('click', submitOrder);
+
+  async function submitOrder() {
+    if (!cart.length) {
+      Swal.fire({ icon: 'warning', title: 'Cart is empty', text: 'Please add items from menu first.', confirmButtonColor: '#1AC8DB' });
+      return;
     }
-};
+
+    const tableId = sessionStorage.getItem('table');
+    const customerId = sessionStorage.getItem('customer_id'); // เผื่อระบบ backend เพิ่ม field นี้ในอนาคต
+
+    if (!tableId) {
+      Swal.fire({ icon: 'error', title: 'Please login again', text: 'Table number not found in session.', confirmButtonColor: '#1AC8DB' });
+      return;
+    }
+
+    const payload = {
+      cart: cart.map(item => ({ id: item.id, price: item.price, qty: item.qty })),
+      total: cart.reduce((sum, item) => sum + item.price * item.qty, 0),
+      customer_id: customerId ? parseInt(customerId, 10) : null,
+      table_id: parseInt(tableId, 10)
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/customers/order/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Order failed');
+      }
+
+      const result = await res.json();
+      localStorage.removeItem('customer_cart');
+      cart = [];
+      Swal.fire({
+        icon: 'success',
+        title: 'Order sent!',
+        text: `Order #${result.order_id || ''} is now pending.`,
+        confirmButtonColor: '#1AC8DB'
+      }).then(() => {
+        window.location.href = '/view/customers/check_customers.html';
+      });
+    } catch (err) {
+      console.error(err);
+      Swal.fire({ icon: 'error', title: 'Cannot send order', text: err.message, confirmButtonColor: '#1AC8DB' });
+    }
+  }
 </script>
 </body>
 </html>

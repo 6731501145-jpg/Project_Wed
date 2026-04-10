@@ -9,7 +9,14 @@ const MemoryStore = require('memorystore')(session);
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/view', express.static(path.join(__dirname, 'view')));
-
+// mi
+const isCustomerAuth = (req, res, next) => {
+    if (req.session.customer_id) {
+        next();
+    } else {
+        res.redirect('/'); // หรือหน้า login
+    }
+};
 // =========================================================
 // 🗄️ 1. DATABASE CONNECTION
 // =========================================================
@@ -18,7 +25,7 @@ const db = mysql.createPool({
     user: 'root',
     password: '',
     database: 'database_webdev_course',
-    port: 3307,
+    port: 3306, //3306 is default MySQL port
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -294,14 +301,27 @@ app.get('/api/cook/review/today', async (req, res) => {
 // ==========================================
 // 🍽️ 4. CUSTOMER SECTION (ระบบลูกค้า)
 // ==========================================
-
 app.post('/customers/login', async (req, res) => {
     try {
         const { username, table_number } = req.body;
         if (!username || !table_number) return res.status(400).send('Missing data');
-        await db.query('INSERT INTO customer (username, table_id, is_paid, created_at) VALUES (?, ?, 0, NOW())', [username, table_number]);
-        res.status(200).send('/public/customers/Menu_customers.html');
-    } catch (error) { res.status(500).send('Server error'); }
+
+        const [result] = await db.query(
+            'INSERT INTO customer (username, table_id, is_paid, created_at) VALUES (?, ?, 0, NOW())',
+            [username, table_number]
+        );
+
+        // ✅ เก็บ session
+        req.session.customer_id = result.insertId;
+        req.session.username = username;
+        req.session.table_id = table_number;
+
+        // ✅ ไป route แทน
+        res.send('/customers/menu');
+
+    } catch (error) {
+        res.status(500).send('Server error');
+    }
 });
 
 app.get('/customers/orders', async (req, res) => {
@@ -545,8 +565,12 @@ app.get('/api/admin/order/history', async (req, res) => {
 
 // --- โหลดหน้า HTML ---
 app.use(express.static(path.join(__dirname, 'view')));
-app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'Menu_customers.html')));
-app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
+app.get('/customers/menu', isCustomerAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
+});
+app.get('/customers/cart', isCustomerAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'cart_customers.html'));
+});
 // ฟังก์ชันเช็คสิทธิ์แบบละเอียด
 const isAuth = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
@@ -571,11 +595,11 @@ app.get('/cook/orderoper', isAuth, (req, res) => {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
-app.get('/admin/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'lisCook_admin.html')));
-app.get('/admin/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_admin.html'));});
-app.get('/admin/order/now', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/OrderNow_admin.html'));});
-app.get('/admin/order/history', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/OrderHistory_admin.html'));});
+app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
+app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
+app.get('/admin/dashboard', isAuth, (req, res) => {res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html'));});
+app.get('/admin/order/now', isAuth, (req, res) => {res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html'));});
+app.get('/admin/order/history', isAuth, (req, res) => {res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderHistory_admin.html'));});
 
 //start server
 app.listen(3000, () => console.log('🚀 Server running on http://localhost:3000'));
