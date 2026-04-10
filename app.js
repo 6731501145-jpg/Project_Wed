@@ -467,6 +467,114 @@ app.post('/customers/checkout', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+// 1. ดึงข้อมูลไปแสดงหน้า PAYMENT (ของเดิม)
+app.get('/api/checkout/:tableId', async (req, res) => {
+    try {
+        const { tableId } = req.params;
+
+        const [orders] = await db.execute(
+            'SELECT order_id FROM `order` WHERE table_id = ? AND status = ? LIMIT 1',
+            [tableId, 'pending'] 
+        );
+
+        if (orders.length === 0) {
+            return res.status(404).json({ message: "ไม่พบออเดอร์ที่ค้างชำระ" });
+        }
+
+        const orderId = orders[0].order_id;
+
+        const [items] = await db.execute(`
+            SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
+            FROM order_item oi
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            WHERE oi.order_id = ?
+        `, [orderId]);
+
+        const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
+        res.json({ items, totalPrice });
+
+    } catch (error) {
+        console.error("Checkout Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// 2. ยืนยันการชำระเงิน (แก้ไขแล้ว)
+app.post('/api/pay', async (req, res) => {
+    try {
+        const { tableId } = req.body;
+        const [orders] = await db.execute(
+            'SELECT order_id FROM `order` WHERE table_id = ? AND status = ? LIMIT 1',
+            [tableId, 'pending']
+        );
+
+        if (orders.length === 0) {
+            return res.status(400).json({ success: false, message: "ไม่มีออเดอร์ให้ชำระเงิน" });
+        }
+
+        const orderId = orders[0].order_id;
+        
+        // 🟢 แก้ไข: อัปเดตตาราง payment และ order ให้เป็น 'completed' แทน 'paid'
+        await db.execute(
+            'UPDATE `payment` SET status = ?, paid_at = NOW() WHERE order_id = ?', 
+            ['completed', orderId]
+        );
+        await db.execute('UPDATE `order` SET status = ? WHERE order_id = ?', ['completed', orderId]);
+
+        res.json({ success: true, message: "ชำระเงินสำเร็จ" });
+    } catch (error) {
+        console.error("Payment Error:", error);
+        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาด" });
+    }
+});
+
+// 3. ดึงข้อมูลใบเสร็จ สำหรับหน้า history2.html (แก้ไขแล้ว)
+app.get('/api/receipt/:tableId', async (req, res) => {
+    try {
+        const { tableId } = req.params;
+
+        // 🟢 แก้ไข: ดึงออเดอร์ล่าสุดที่สถานะเป็น 'completed' แทน 'paid'
+        const [orders] = await db.execute(`
+            SELECT o.order_id, p.paid_at 
+            FROM \`order\` o
+            JOIN \`payment\` p ON o.order_id = p.order_id
+            WHERE o.table_id = ? AND o.status = 'completed'
+            ORDER BY p.paid_at DESC 
+            LIMIT 1
+        `, [tableId]);
+
+        if (orders.length === 0) {
+            return res.status(404).json({ message: "ไม่พบข้อมูลใบเสร็จ" });
+        }
+
+        const orderId = orders[0].order_id;
+        const paidAt = orders[0].paid_at;
+
+        // ดึงรายการอาหารที่อยู่ในออเดอร์นั้น
+        const [items] = await db.execute(`
+            SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
+            FROM order_item oi
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            WHERE oi.order_id = ?
+        `, [orderId]);
+
+        // คำนวณราคารวม
+        const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
+
+        // ส่งข้อมูลกลับไปให้ Frontend
+        res.json({ 
+            items: items, 
+            totalPrice: totalPrice,
+            paidAt: paidAt,
+            customerName: 'ลูกค้าทั่วไป' 
+        });
+
+    } catch (error) {
+        console.error("Receipt Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 // ==========================================
 // 👮 5. ADMIN SECTION (จัดการกุ๊ก & เมนู)
 // ==========================================
