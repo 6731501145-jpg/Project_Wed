@@ -312,7 +312,8 @@ app.get('/customers/orders', async (req, res) => {
             FROM \`order\` o
             JOIN order_item oi ON o.order_id = oi.order_id
             JOIN menu_item m ON oi.menu_id = m.menu_id
-            WHERE o.table_id = ?
+            WHERE o.table_id = ? 
+              AND o.status != 'completed' -- 👈 แนะนำให้เพิ่มบรรทัดนี้ เพื่อไม่โชว์ออเดอร์เก่าที่ทำเสร็จจบไปแล้ว
         `, [table_number]);
         res.status(200).json(orders);
     } catch (error) { res.status(500).send('Server error'); }
