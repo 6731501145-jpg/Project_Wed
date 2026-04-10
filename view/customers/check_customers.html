@@ -3,16 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Food Ordering System</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/daisyui@5"
-      rel="stylesheet"
-      type="text/css"
-    />
+    <title>Food Ordering System - Check Status</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   </head>
   <body class="bg-base-100 min-h-screen">
-    <!-- ══ NAVBAR ══ -->
     <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
       <div class="flex-1 flex items-center gap-2">
         <span class="text-xl">✦</span>
@@ -21,59 +16,46 @@
       <div class="flex-none">
         <button
           class="btn btn-outline btn-sm rounded-xl text-sm"
-         onclick="window.location.href = '/public/customers/Login_customers.html'"
+          onclick="window.location.href = '/public/customers/Login_customers.html'"
         >
           back to login
         </button>
       </div>
     </div>
 
-    <!-- ══ PILL TABS — centered ══ -->
     <div class="flex justify-center mt-6 md:mt-10 px-4">
       <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
         <a href="/public/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           menu
         </a>
-        <a
-          href="/public/customers/capt_customers.html"
-          class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
-        >
+        <a href="/public/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           cart
         </a>
-        <span
-          class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
-          style="background-color: #1ac8db"
-        >
+        <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default" style="background-color: #1ac8db">
           check
         </span>
-        <a
-          href="/public/customers/PAYMENT.html"
-          class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
-        >
+        <a href="/public/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           payment
         </a>
       </div>
     </div>
 
-    <!-- ══ CHECK CONTENT — centered ══ -->
     <div class="flex flex-col items-center w-full px-4 mt-6 pb-16">
       <div class="w-full max-w-lg">
-        <h2 class="text-2xl md:text-3xl font-bold mb-5">Waiting</h2>
-
-        <!-- Order list -->
-        <div id="orderList" class="flex flex-col gap-3">
-          <!-- populated by JS -->
+        <div class="flex justify-between items-center mb-5">
+          <h2 class="text-2xl md:text-3xl font-bold">Waiting</h2>
+          <span id="tableBadge" class="badge badge-lg" style="background-color: #1ac8db; color: white;"></span>
         </div>
+
+        <div id="orderList" class="flex flex-col gap-3">
+          </div>
       </div>
     </div>
 
-    <!-- ══ TOAST ══ -->
-    <div id="toastArea" class="toast toast-bottom toast-center z-50"></div>
-
     <script>
-      /* ── ดึงข้อมูลจริงจาก Database แทน Demo Data ── */
       async function renderOrders() {
         const el = document.getElementById("orderList");
+        const tableBadge = document.getElementById("tableBadge");
         
         // ดึงเลขโต๊ะจากที่ลูกค้า Login เข้ามา
         const tableNumber = sessionStorage.getItem("table");
@@ -81,10 +63,13 @@
         if (!tableNumber) {
           el.innerHTML = `
             <div class="text-center py-16 text-base-content/40">
-              <p class="text-sm">กรุณาเข้าสู่ระบบก่อนครับ</p>
+              <p class="text-sm text-error">Please login first.</p>
+              <button class="btn btn-sm mt-4" onclick="window.location.href='/public/customers/Login_customers.html'">Go to Login</button>
             </div>`;
           return;
         }
+
+        tableBadge.innerText = `Table ${tableNumber}`;
 
         try {
           // ส่ง request ไปหา API เช็คสถานะอาหารของโต๊ะนี้
@@ -97,22 +82,41 @@
               el.innerHTML = `
                 <div class="text-center py-16 text-base-content/40">
                   <div class="text-5xl mb-3">📋</div>
-                  <p class="text-sm">No orders yet</p>
+                  <p class="text-sm">No orders yet. Let's order some food!</p>
                 </div>`;
               return;
             }
 
             // นำข้อมูลที่ได้จากฐานข้อมูลมาโชว์บนจอ
             el.innerHTML = orders.map((o) => {
-              // ตกแต่งสถานะให้สวยงาม
-              let isDone = (o.status === "serving" || o.status === "completed");
-              let statusText = o.status.charAt(0).toUpperCase() + o.status.slice(1); // ทำให้ตัวแรกเป็นพิมพ์ใหญ่
+              // ตกแต่งสถานะและสีให้สื่อความหมาย
+              let statusText = "";
+              let statusColorClass = "";
+
+              switch(o.status) {
+                case "pending":
+                  statusText = "⏳ Pending";
+                  statusColorClass = "text-base-content/60";
+                  break;
+                case "cooking":
+                  statusText = "🔥 Cooking";
+                  statusColorClass = "text-warning";
+                  break;
+                case "serving":
+                case "completed":
+                  statusText = "✅ Served";
+                  statusColorClass = "text-success";
+                  break;
+                default:
+                  statusText = o.status;
+                  statusColorClass = "text-base-content";
+              }
 
               return `
-                <div class="card bg-base-200 rounded-2xl">
+                <div class="card bg-base-200 rounded-2xl shadow-sm">
                   <div class="card-body flex-row items-center justify-between p-4 md:p-5">
                     <span class="font-semibold text-sm md:text-base">${o.menu_name}</span>
-                    <span class="font-semibold text-sm ${isDone ? "text-success" : "text-warning"}">
+                    <span class="font-bold text-sm ${statusColorClass}">
                       ${statusText}
                     </span>
                   </div>
@@ -121,16 +125,23 @@
             }).join("");
 
           } else {
-            el.innerHTML = `<p class="text-center text-error mt-10">เกิดข้อผิดพลาดในการดึงข้อมูล</p>`;
+            el.innerHTML = `<p class="text-center text-error mt-10">Error fetching data</p>`;
           }
         } catch (error) {
           console.error("Error fetching orders:", error);
-          el.innerHTML = `<p class="text-center text-error mt-10">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้</p>`;
+          // ป้องกันไม่ให้ขึ้น Error รัวๆ ถ้าระบบยังโหลดอยู่
+          if(el.innerHTML === "") {
+             el.innerHTML = `<p class="text-center text-error mt-10">Cannot connect to server.</p>`;
+          }
         }
       }
 
-      // ให้ฟังก์ชันทำงานทันทีที่โหลดหน้าเว็บเสร็จ
-      window.onload = renderOrders;
+      // 1. ให้ฟังก์ชันทำงานทันทีที่โหลดหน้าเว็บเสร็จ
+      window.onload = () => {
+        renderOrders();
+        // 2. ดึงข้อมูลใหม่ทุกๆ 5 วินาที (5000 มิลลิวินาที) เพื่อให้ลูกค้าเห็นอัปเดตแบบเรียลไทม์
+        setInterval(renderOrders, 5000);
+      };
     </script>
   </body>
 </html>
