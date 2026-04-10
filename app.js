@@ -309,21 +309,33 @@ app.post('/customers/login', async (req, res) => {
             return res.status(400).send('Missing data');
         }
 
+        // 🔥 เช็คโต๊ะก่อน
+        const [tables] = await db.query(
+            'SELECT status FROM `table` WHERE table_id = ?',
+            [table_number]
+        );
+
+        if (tables.length === 0) {
+            return res.status(404).send('Table not found');
+        }
+
+        if (tables[0].status === 'occupied') {
+            return res.status(400).send('Table already occupied');
+        }
+
         // สร้าง customer
         const [result] = await db.query(
             'INSERT INTO customer (username, table_id, is_paid, created_at) VALUES (?, ?, 0, NOW())',
             [username, table_number]
         );
 
-        // mark โต๊ะ = occupied 🔥
+        // mark โต๊ะ
         await db.query(
             'UPDATE `table` SET status = "occupied" WHERE table_id = ?',
             [table_number]
         );
 
-        // session
         req.session.customer_id = result.insertId;
-        req.session.username = username;
         req.session.table_id = table_number;
 
         res.send('/customers/menu');
@@ -335,17 +347,20 @@ app.post('/customers/login', async (req, res) => {
 
 app.get('/customers/orders', async (req, res) => {
     try {
-        const table_number = req.query.table;
+        const table_id = req.session.table_id;
+
         const [orders] = await db.query(`
-            SELECT o.order_id, o.table_id AS table_number, m.name AS menu_name, o.status
+            SELECT o.order_id, m.name, o.status
             FROM \`order\` o
             JOIN order_item oi ON o.order_id = oi.order_id
             JOIN menu_item m ON oi.menu_id = m.menu_id
-            WHERE o.table_id = ? 
-              AND o.status != 'completed' -- 👈 แนะนำให้เพิ่มบรรทัดนี้ เพื่อไม่โชว์ออเดอร์เก่าที่ทำเสร็จจบไปแล้ว
-        `, [table_number]);
-        res.status(200).json(orders);
-    } catch (error) { res.status(500).send('Server error'); }
+            WHERE o.table_id = ? AND o.status != 'completed'
+        `, [table_id]);
+
+        res.json(orders);
+    } catch {
+        res.status(500).send('Error');
+    }
 });
 
 app.get('/customers/products', async (req, res) => {
@@ -377,24 +392,17 @@ app.post('/customers/order/submit', async (req, res) => {
     try {
         connection = await db.getConnection();
 
-        // 🔥 CHECK is_paid ก่อนทำอะไรทั้งหมด
+        // 🔥 เช็ค is_paid
         const [cust] = await connection.query(
             'SELECT is_paid FROM customer WHERE customer_id = ?',
             [customer_id]
         );
 
-        if (cust.length === 0) {
-            return res.status(404).send('Customer not found');
-        }
+        if (cust.length === 0) return res.status(404).send('Customer not found');
+        if (cust[0].is_paid === 1) return res.status(400).send('Already checked out');
 
-        if (cust[0].is_paid === 1) {
-            return res.status(400).send('Already checked out');
-        }
-
-        // ✅ เริ่ม transaction
         await connection.beginTransaction();
 
-        // สร้าง order
         const [orderResult] = await connection.query(
             "INSERT INTO `order` (customer_id, table_id, total_price, status) VALUES (?, ?, ?, 'pending')",
             [customer_id, table_id, total]
@@ -402,7 +410,7 @@ app.post('/customers/order/submit', async (req, res) => {
 
         const newOrderId = orderResult.insertId;
 
-        // เพิ่ม order_item (แก้ bug แล้ว ❌ ไม่มี customer_id)
+        // 🔥 insert แบบไม่มี customer_id + ไม่มี amount
         for (const item of cart) {
             for (let i = 0; i < item.qty; i++) {
                 await connection.query(
@@ -413,58 +421,61 @@ app.post('/customers/order/submit', async (req, res) => {
         }
 
         await connection.commit();
-
-        res.status(200).json({
-            success: true,
-            order_id: newOrderId
-        });
+        res.json({ success: true, order_id: newOrderId });
 
     } catch (error) {
         if (connection) await connection.rollback();
-        res.status(500).send('Error: ' + error.message);
+        res.status(500).send(error.message);
     } finally {
         if (connection) connection.release();
     }
 });
 
 // ================= CHECKOUT =================
-app.post('/customers/checkout', async (req, res) => {
+app.post('/api/pay', async (req, res) => {
     try {
-        const customer_id = req.session.customer_id;
-        const table_id = req.session.table_id;
+        const { tableId } = req.body;
 
-        if (!customer_id) {
-            return res.status(401).send('Not logged in');
-        }
-
-        // 🔥 mark ว่าจ่ายเงินแล้ว
-        await db.query(
-            'UPDATE customer SET is_paid = 1 WHERE customer_id = ?',
-            [customer_id]
+        // หา order ทั้งหมด
+        const [orders] = await db.execute(
+            'SELECT order_id FROM `order` WHERE table_id = ? AND status = ?',
+            [tableId, 'pending']
         );
 
-        // 🔥 ปิด order ทั้งหมด
-        await db.query(
-            'UPDATE `order` SET status = "completed" WHERE customer_id = ?',
-            [customer_id]
+        if (orders.length === 0) {
+            return res.status(400).json({ success: false, message: "ไม่มีออเดอร์" });
+        }
+
+        const orderIds = orders.map(o => o.order_id);
+
+        // 🔥 update payment
+        await db.execute(
+            'UPDATE payment SET status = "completed", paid_at = NOW() WHERE order_id IN (?)',
+            [orderIds]
+        );
+
+        // 🔥 update order
+        await db.execute(
+            'UPDATE `order` SET status = "completed" WHERE order_id IN (?)',
+            [orderIds]
+        );
+
+        // 🔥 update customer
+        await db.execute(
+            'UPDATE customer SET is_paid = 1 WHERE table_id = ?',
+            [tableId]
         );
 
         // 🔥 เคลียร์โต๊ะ
-        await db.query(
+        await db.execute(
             'UPDATE `table` SET status = "available" WHERE table_id = ?',
-            [table_id]
+            [tableId]
         );
 
-        // 🔥 ลบ session
-        req.session.destroy((err) => {
-            if (err) return res.status(500).send('Logout error');
-
-            res.clearCookie('connect.sid');
-            res.status(200).send('Checkout success');
-        });
+        res.json({ success: true });
 
     } catch (error) {
-        res.status(500).send('Server error');
+        res.status(500).json({ error: "Payment error" });
     }
 });
 
@@ -473,59 +484,20 @@ app.get('/api/checkout/:tableId', async (req, res) => {
     try {
         const { tableId } = req.params;
 
-        const [orders] = await db.execute(
-            'SELECT order_id FROM `order` WHERE table_id = ? AND status = ? LIMIT 1',
-            [tableId, 'pending'] 
-        );
-
-        if (orders.length === 0) {
-            return res.status(404).json({ message: "ไม่พบออเดอร์ที่ค้างชำระ" });
-        }
-
-        const orderId = orders[0].order_id;
-
         const [items] = await db.execute(`
-            SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
+            SELECT m.name AS menuName, m.price
             FROM order_item oi
             JOIN menu_item m ON oi.menu_id = m.menu_id
-            WHERE oi.order_id = ?
-        `, [orderId]);
+            JOIN \`order\` o ON oi.order_id = o.order_id
+            WHERE o.table_id = ? AND o.status = 'pending'
+        `, [tableId]);
 
-        const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
+        const totalPrice = items.reduce((sum, item) => sum + Number(item.price), 0);
+
         res.json({ items, totalPrice });
 
     } catch (error) {
-        console.error("Checkout Error:", error);
         res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// 2. ยืนยันการชำระเงิน (แก้ไขแล้ว)
-app.post('/api/pay', async (req, res) => {
-    try {
-        const { tableId } = req.body;
-        const [orders] = await db.execute(
-            'SELECT order_id FROM `order` WHERE table_id = ? AND status = ? LIMIT 1',
-            [tableId, 'pending']
-        );
-
-        if (orders.length === 0) {
-            return res.status(400).json({ success: false, message: "ไม่มีออเดอร์ให้ชำระเงิน" });
-        }
-
-        const orderId = orders[0].order_id;
-        
-        // 🟢 แก้ไข: อัปเดตตาราง payment และ order ให้เป็น 'completed' แทน 'paid'
-        await db.execute(
-            'UPDATE `payment` SET status = ?, paid_at = NOW() WHERE order_id = ?', 
-            ['completed', orderId]
-        );
-        await db.execute('UPDATE `order` SET status = ? WHERE order_id = ?', ['completed', orderId]);
-
-        res.json({ success: true, message: "ชำระเงินสำเร็จ" });
-    } catch (error) {
-        console.error("Payment Error:", error);
-        res.status(500).json({ success: false, error: "เกิดข้อผิดพลาด" });
     }
 });
 
