@@ -15,7 +15,7 @@
         
         <div class="receipt-header" style="display: block; text-align: left;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span>TABLE 4</span>
+                <span id="table-label">TABLE</span>
                 <span class="date-text" id="receipt-date" style="font-size: 20px;">D/M/Y</span>
             </div>
             <div style="font-size: 20px; font-weight: normal; text-shadow: none; color: #555;">
@@ -56,11 +56,24 @@
 
     <script>
         const API_URL = 'http://localhost:3000/api';
-        const TABLE_ID = '4';
+        const TABLE_ID = sessionStorage.getItem('table');
+
+        if (!TABLE_ID) {
+            alert('Please login first.');
+            window.location.href = '/view/customers/Login_customers.html';
+        }
+        document.getElementById('table-label').innerText = `TABLE ${TABLE_ID}`;
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch(`${API_URL}/receipt/${TABLE_ID}`);
+
+                if (!response.ok) {
+                    document.getElementById('receipt-items').innerHTML = '<span style="color:red;">ไม่พบใบเสร็จ</span>';
+                    document.getElementById('receipt-total').innerText = 'TOTAL PRICE : 0 ฿';
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (data.items) {
@@ -94,6 +107,7 @@
                 }
             } catch (error) {
                 console.error('Error fetching receipt:', error);
+                document.getElementById('receipt-items').innerHTML = '<span style="color:red;">Cannot load receipt</span>';
             }
 
             const savedRating = localStorage.getItem('savedRating');
