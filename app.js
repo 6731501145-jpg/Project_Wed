@@ -520,7 +520,7 @@ app.get('/api/receipt/:tableId', async (req, res) => {
     try {
         const { tableId } = req.params;
 
-        // 🟢 เพิ่มตรงนี้: หาเวลาที่เพิ่งจ่ายบิลไปล่าสุด
+        // 1. หาเวลาที่เพิ่งจ่ายบิลไปล่าสุด
         const [latestPayment] = await db.execute(`
             SELECT p.paid_at 
             FROM \`order\` o
@@ -536,7 +536,7 @@ app.get('/api/receipt/:tableId', async (req, res) => {
 
         const paidAt = latestPayment[0].paid_at;
 
-        // 🟢 เพิ่มตรงนี้: ดึงรายการอาหารทั้งหมดที่จ่ายพร้อมกันในเวลานั้น (ไม่โดน Limit แค่ออเดอร์เดียวแล้ว)
+        // 2. ดึงรายการอาหารทั้งหมดที่จ่ายพร้อมกัน
         const [items] = await db.execute(`
             SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
             FROM order_item oi
@@ -548,11 +548,23 @@ app.get('/api/receipt/:tableId', async (req, res) => {
 
         const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
 
+        // 🟢 3. ดึงชื่อลูกค้าจริงจากตาราง customer
+        // (สมมติว่าคอลัมน์ชื่อลูกค้าในฐานข้อมูลของคุณชื่อ 'username' ถ้าเป็นชื่ออื่นเช่น 'name' ให้แก้ตรงนี้นะครับ)
+        const [customer] = await db.execute(`
+            SELECT username FROM customer WHERE table_id = ? LIMIT 1
+        `, [tableId]);
+
+        let realCustomerName = 'ลูกค้าทั่วไป';
+        if (customer.length > 0 && customer[0].username) {
+            realCustomerName = customer[0].username;
+        }
+
+        // ส่งข้อมูลทั้งหมดกลับไปให้หน้าเว็บ
         res.json({ 
             items: items, 
             totalPrice: totalPrice,
             paidAt: paidAt,
-            customerName: 'ลูกค้าทั่วไป' 
+            customerName: realCustomerName // 🟢 เปลี่ยนตรงนี้ให้ใช้ตัวแปรชื่อลูกค้าจริง
         });
 
     } catch (error) {
