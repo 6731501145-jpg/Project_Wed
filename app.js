@@ -9,7 +9,14 @@ const MemoryStore = require('memorystore')(session);
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/view', express.static(path.join(__dirname, 'view')));
-
+// mi
+const isCustomerAuth = (req, res, next) => {
+    if (req.session.customer_id) {
+        next();
+    } else {
+        res.redirect('/'); // หรือหน้า login
+    }
+};
 // =========================================================
 // 🗄️ 1. DATABASE CONNECTION
 // =========================================================
@@ -18,7 +25,7 @@ const db = mysql.createPool({
     user: 'root',
     password: '',
     database: 'database_webdev_course',
-    port: 3307,
+    port: 3306, //3306 is default MySQL port
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -32,12 +39,12 @@ db.getConnection()
 // 🗄️ 1.1 configure session
 // =========================================================
 app.use(session({
-    cookie: { maxAge: 24*60*60*1000},
+    cookie: { maxAge: 24 * 60 * 60 * 1000 },
     secret: 'webappis2easy',
     resave: false,
     saveUninitialized: true,
     store: new MemoryStore({
-        checkPeriod: 24*60*60*1000
+        checkPeriod: 24 * 60 * 60 * 1000
     })
 }));
 
@@ -76,12 +83,12 @@ app.post('/admin/signin', async (req, res) => {
 app.get('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) return res.status(500).send('Cannot logout');
-        
+
         // ลบคุกกี้ชื่อ connect.sid (ชื่อมาตรฐานของ express-session)
-        res.clearCookie('connect.sid'); 
-        
+        res.clearCookie('connect.sid');
+
         // ส่งกลับหน้าแรก
-        res.redirect('/'); 
+        res.redirect('/');
     });
 });
 
@@ -106,7 +113,7 @@ app.post('/cooks/register', async (req, res) => {
 app.post('/cooks/login', async (req, res) => {
     const { name, password } = req.body;
     const sql = "SELECT employee_id, name, password_hash FROM cook WHERE name = ?";
-    
+
     try {
         const [results] = await db.query(sql, [name]);
 
@@ -115,7 +122,7 @@ app.post('/cooks/login', async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(password, results[0].password_hash);
-        
+
         if (!isMatch) {
             return res.status(401).send('Wrong Password');
         }
@@ -158,7 +165,7 @@ app.get('/user/info', (req, res) => {
 app.get('/cook/orders', async (req, res) => {
     try {
         const { status } = req.query; // รับค่า 'pending' จาก Query String
-        
+
         let sql = `
             SELECT o.order_id, t.table_number, o.status, m.name AS menu_name, COUNT(oi.menu_id) AS quantity
             FROM \`order\` o
@@ -171,11 +178,11 @@ app.get('/cook/orders', async (req, res) => {
         if (status) {
             sql += ` WHERE o.status = ? `;
         }
-        
+
         sql += ` GROUP BY o.order_id, m.menu_id `;
 
         const [rows] = await db.query(sql, status ? [status] : []);
-        
+
         // --- ส่วนการจัดกลุ่มข้อมูล (Grouping) ---
         const orders = {};
         rows.forEach(row => {
@@ -187,12 +194,12 @@ app.get('/cook/orders', async (req, res) => {
                     items: []
                 };
             }
-            orders[row.order_id].items.push({ 
-                menu_name: row.menu_name, 
-                quantity: row.quantity 
+            orders[row.order_id].items.push({
+                menu_name: row.menu_name,
+                quantity: row.quantity
             });
         });
-        
+
         res.status(200).json(Object.values(orders));
     } catch (error) {
         console.error(error);
@@ -294,28 +301,66 @@ app.get('/api/cook/review/today', async (req, res) => {
 // ==========================================
 // 🍽️ 4. CUSTOMER SECTION (ระบบลูกค้า)
 // ==========================================
-
 app.post('/customers/login', async (req, res) => {
     try {
         const { username, table_number } = req.body;
-        if (!username || !table_number) return res.status(400).send('Missing data');
-        await db.query('INSERT INTO customer (username, table_id, is_paid, created_at) VALUES (?, ?, 0, NOW())', [username, table_number]);
-        res.status(200).send('/public/customers/Menu_customers.html');
-    } catch (error) { res.status(500).send('Server error'); }
+
+        if (!username || !table_number) {
+            return res.status(400).send('Missing data');
+        }
+
+        // 🔥 เช็คโต๊ะก่อน
+        const [tables] = await db.query(
+            'SELECT status FROM `table` WHERE table_id = ?',
+            [table_number]
+        );
+
+        if (tables.length === 0) {
+            return res.status(404).send('Table not found');
+        }
+
+        if (tables[0].status === 'occupied') {
+            return res.status(400).send('Table already occupied');
+        }
+
+        // สร้าง customer
+        const [result] = await db.query(
+            'INSERT INTO customer (username, table_id, is_paid, created_at) VALUES (?, ?, 0, NOW())',
+            [username, table_number]
+        );
+
+        // mark โต๊ะ
+        await db.query(
+            'UPDATE `table` SET status = "occupied" WHERE table_id = ?',
+            [table_number]
+        );
+
+        req.session.customer_id = result.insertId;
+        req.session.table_id = table_number;
+
+        res.send('/customers/menu');
+
+    } catch (error) {
+        res.status(500).send('Server error');
+    }
 });
 
 app.get('/customers/orders', async (req, res) => {
     try {
-        const table_number = req.query.table;
+        const table_id = req.session.table_id;
+
         const [orders] = await db.query(`
-            SELECT o.order_id, o.table_id AS table_number, m.name AS menu_name, o.status
+            SELECT o.order_id, m.name, o.status
             FROM \`order\` o
             JOIN order_item oi ON o.order_id = oi.order_id
             JOIN menu_item m ON oi.menu_id = m.menu_id
-            WHERE o.table_id = ?
-        `, [table_number]);
-        res.status(200).json(orders);
-    } catch (error) { res.status(500).send('Server error'); }
+            WHERE o.table_id = ? AND o.status != 'completed'
+        `, [table_id]);
+
+        res.json(orders);
+    } catch {
+        res.status(500).send('Error');
+    }
 });
 
 app.get('/customers/products', async (req, res) => {
@@ -332,30 +377,201 @@ app.get('/customers/search', async (req, res) => {
     } catch (error) { res.status(500).send('Search failed'); }
 });
 
-// ยืนยันการสั่งซื้อ (Transaction)
+// ================= ORDER SUBMIT =================
 app.post('/customers/order/submit', async (req, res) => {
-    const { cart, total, customer_id, table_id } = req.body;
+    const customer_id = req.session.customer_id;
+    const table_id = req.session.table_id;
+    const { cart, total } = req.body;
+
+    if (!customer_id) {
+        return res.status(401).send('Not logged in');
+    }
+
     let connection;
+
     try {
         connection = await db.getConnection();
+
+        // 🔥 เช็ค is_paid
+        const [cust] = await connection.query(
+            'SELECT is_paid FROM customer WHERE customer_id = ?',
+            [customer_id]
+        );
+
+        if (cust.length === 0) return res.status(404).send('Customer not found');
+        if (cust[0].is_paid === 1) return res.status(400).send('Already checked out');
+
         await connection.beginTransaction();
-        const [orderResult] = await connection.query("INSERT INTO `order` (customer_id, table_id, total_price, status) VALUES (?, ?, ?, 'pending')", [customer_id, table_id, total]);
+
+        const [orderResult] = await connection.query(
+            "INSERT INTO `order` (customer_id, table_id, total_price, status) VALUES (?, ?, ?, 'pending')",
+            [customer_id, table_id, total]
+        );
+
         const newOrderId = orderResult.insertId;
+
+        // 🔥 insert แบบไม่มี customer_id + ไม่มี amount
         for (const item of cart) {
             for (let i = 0; i < item.qty; i++) {
-                await connection.query("INSERT INTO order_item (order_id, menu_id, price, customer_id) VALUES (?, ?, ?, ?)", [newOrderId, item.id, item.price, customer_id]);
+                await connection.query(
+                    "INSERT INTO order_item (order_id, menu_id, price) VALUES (?, ?, ?)",
+                    [newOrderId, item.id, item.price]
+                );
             }
         }
+
         await connection.commit();
-        res.status(200).json({ success: true, order_id: newOrderId });
+        res.json({ success: true, order_id: newOrderId });
+
     } catch (error) {
         if (connection) await connection.rollback();
-        res.status(500).send('Error: ' + error.message);
+        res.status(500).send(error.message);
     } finally {
         if (connection) connection.release();
     }
 });
 
+// ================= CHECKOUT =================
+app.get('/api/checkout/:tableId', async (req, res) => {
+    try {
+        const { tableId } = req.params;
+
+        const [items] = await db.execute(`
+            SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
+            FROM order_item oi
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            JOIN \`order\` o ON oi.order_id = o.order_id
+            WHERE o.table_id = ? AND o.status = 'done'
+        `, [tableId]);
+
+        const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
+
+        res.json({ items, totalPrice });
+
+    } catch (error) {
+        console.error("Checkout error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// ==========================================
+// 2. ยืนยันการชำระเงิน (เพิ่มการ Insert ข้อมูลลง Payment)
+// ==========================================
+app.post('/api/pay', async (req, res) => {
+    try {
+        const { tableId } = req.body;
+
+        const [orders] = await db.execute(
+            'SELECT order_id FROM `order` WHERE table_id = ? AND status = ?',
+            [tableId, 'done'] 
+        );
+
+        if (orders.length === 0) {
+            return res.status(400).json({ success: false, message: "ไม่มีออเดอร์" });
+        }
+
+        const orderIds = orders.map(o => o.order_id);
+
+        // 🟢 เพิ่มตรงนี้: วนลูปเพื่อเช็คและ Insert ข้อมูลลงตาราง payment
+        for (let id of orderIds) {
+            const [payResult] = await db.execute(
+                'UPDATE `payment` SET status = "completed", paid_at = NOW() WHERE order_id = ?',
+                [id]
+            );
+            // ถ้า Update ไม่เจอ (ยังไม่เคยมีบันทึก) ให้ Insert ใหม่
+            if (payResult.affectedRows === 0) {
+                await db.execute(
+                    'INSERT INTO `payment` (order_id, status, paid_at) VALUES (?, "completed", NOW())',
+                    [id]
+                );
+            }
+        }
+
+        // 🔥 update order
+        await db.query(
+            'UPDATE `order` SET status = "completed" WHERE order_id IN (?)',
+            [orderIds]
+        );
+
+        // 🔥 update customer
+        await db.execute(
+            'UPDATE customer SET is_paid = 1 WHERE table_id = ?',
+            [tableId]
+        );
+
+        // 🔥 เคลียร์โต๊ะ
+        await db.execute(
+            'UPDATE `table` SET status = "available" WHERE table_id = ?',
+            [tableId]
+        );
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error("Payment error:", error);
+        res.status(500).json({ error: "Payment error" });
+    }
+});
+
+// ==========================================
+// 3. ดึงข้อมูลใบเสร็จ สำหรับหน้า history2.html 
+// ==========================================
+app.get('/api/receipt/:tableId', async (req, res) => {
+    try {
+        const { tableId } = req.params;
+
+        // 1. หาเวลาที่เพิ่งจ่ายบิลไปล่าสุด
+        const [latestPayment] = await db.execute(`
+            SELECT p.paid_at 
+            FROM \`order\` o
+            JOIN \`payment\` p ON o.order_id = p.order_id
+            WHERE o.table_id = ? AND o.status = 'completed'
+            ORDER BY p.paid_at DESC 
+            LIMIT 1
+        `, [tableId]);
+
+        if (latestPayment.length === 0) {
+            return res.status(404).json({ message: "ไม่พบข้อมูลใบเสร็จ" });
+        }
+
+        const paidAt = latestPayment[0].paid_at;
+
+        // 2. ดึงรายการอาหารทั้งหมดที่จ่ายพร้อมกัน
+        const [items] = await db.execute(`
+            SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
+            FROM order_item oi
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            JOIN \`order\` o ON oi.order_id = o.order_id
+            JOIN \`payment\` p ON o.order_id = p.order_id
+            WHERE o.table_id = ? AND o.status = 'completed' AND p.paid_at = ?
+        `, [tableId, paidAt]);
+
+        const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
+
+        // 🟢 3. ดึงชื่อลูกค้าจริงจากตาราง customer
+        // (สมมติว่าคอลัมน์ชื่อลูกค้าในฐานข้อมูลของคุณชื่อ 'username' ถ้าเป็นชื่ออื่นเช่น 'name' ให้แก้ตรงนี้นะครับ)
+        const [customer] = await db.execute(`
+            SELECT username FROM customer WHERE table_id = ? LIMIT 1
+        `, [tableId]);
+
+        let realCustomerName = 'ลูกค้าทั่วไป';
+        if (customer.length > 0 && customer[0].username) {
+            realCustomerName = customer[0].username;
+        }
+
+        // ส่งข้อมูลทั้งหมดกลับไปให้หน้าเว็บ
+        res.json({ 
+            items: items, 
+            totalPrice: totalPrice,
+            paidAt: paidAt,
+            customerName: realCustomerName // 🟢 เปลี่ยนตรงนี้ให้ใช้ตัวแปรชื่อลูกค้าจริง
+        });
+
+    } catch (error) {
+        console.error("Receipt Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 // ==========================================
 // 👮 5. ADMIN SECTION (จัดการกุ๊ก & เมนู)
 // ==========================================
@@ -544,8 +760,12 @@ app.get('/api/admin/order/history', async (req, res) => {
 
 // --- โหลดหน้า HTML ---
 app.use(express.static(path.join(__dirname, 'view')));
-app.get('/customers/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'Menu_customers.html')));
-app.get('/customers/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customers', 'cart_customers.html')));
+app.get('/customers/menu', isCustomerAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
+});
+app.get('/customers/cart', isCustomerAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'cart_customers.html'));
+});
 // ฟังก์ชันเช็คสิทธิ์แบบละเอียด
 const isAuth = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
@@ -556,7 +776,7 @@ const isAuth = (req, res, next) => {
         return next(); // ถ้ามี ให้ไปต่อได้
     } else {
         // 3. ถ้าไม่มี ให้ดีดกลับไปหน้า Login ทันที
-        return res.redirect('/'); 
+        return res.redirect('/');
     }
 };
 // ใช้ isAdmin เข้ามาคั่นกลางก่อนจะส่งไฟล์
@@ -575,11 +795,11 @@ app.get('/', (req, res) => {
     }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
-app.get('/admin/menu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'lisCook_admin.html')));
-app.get('/admin/dashboard', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/Dashdoard_admin.html'));});
-app.get('/admin/order/now', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/OrderNow_admin.html'));});
-app.get('/admin/order/history', (req, res) => {res.status(200).sendFile(path.join(__dirname, '/view/OrderHistory_admin.html'));});
+app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
+app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
+app.get('/admin/dashboard', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html')); });
+app.get('/admin/order/now', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html')); });
+app.get('/admin/order/history', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderHistory_admin.html')); });
 
 //start server
 app.listen(3000, () => console.log('🚀 Server running on http://localhost:3000'));

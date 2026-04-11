@@ -4,16 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login Food Ordering</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/daisyui@5"
-      rel="stylesheet"
-      type="text/css"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
   <body class="bg-base-100 min-h-screen flex flex-col">
-    <!-- ══ NAVBAR ══ -->
     <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
       <div class="flex-1 flex items-center gap-2">
         <span class="text-xl">✦</span>
@@ -29,12 +24,10 @@
       </div>
     </div>
 
-    <!-- ══ CENTERED FORM ══ -->
     <div class="flex flex-1 items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
         <h1 class="text-3xl font-bold mb-8 text-center">Welcome</h1>
 
-        <!-- Username -->
         <div class="mb-5">
           <label class="block text-sm font-medium mb-1">Username</label>
           <input
@@ -45,13 +38,9 @@
           />
         </div>
 
-        <!-- Table -->
         <div class="mb-6">
           <label class="block text-sm font-medium mb-1">Table</label>
-          <select
-            id="tableSelect"
-            class="select select-bordered w-full rounded-lg text-sm"
-          >
+          <select id="tableSelect" class="select select-bordered w-full rounded-lg text-sm">
             <option value="" disabled selected>Select your table</option>
             <option value="1">Table 1</option>
             <option value="2">Table 2</option>
@@ -66,7 +55,6 @@
           </select>
         </div>
 
-        <!-- Login button -->
         <button
           onclick="doLogin()"
           class="btn w-full rounded-lg text-white font-semibold text-base"
@@ -79,9 +67,11 @@
 
     <script>
       async function doLogin() {
+        // ดึงค่าและตัดช่องว่าง
         const username = document.getElementById("username").value.trim();
         const table = document.getElementById("tableSelect").value;
 
+        // ตรวจสอบว่ากรอกข้อมูลครบหรือไม่
         if (!username || !table) {
           Swal.fire({
             icon: "warning",
@@ -94,17 +84,19 @@
         }
 
         try {
-          // เชื่อมต่อ API ลูกค้า
+          // เชื่อมต่อ API ของระบบหลังบ้าน (app.js)
           const response = await fetch('http://localhost:3000/customers/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // แปลง table_number ให้เป็น Integer ตามที่ Database ต้องการ
             body: JSON.stringify({ username: username, table_number: parseInt(table) })
           });
 
           if (response.ok) {
+            // รับ Path ที่ส่งมาจาก Server (/public/customers/Menu_customers.html)
             const redirectPath = await response.text();
 
-            // เซฟลง sessionStorage เหมือนเดิม ไว้ให้หน้าอื่นใช้งานต่อ
+            // เซฟข้อมูลลง sessionStorage เพื่อให้หน้า Menu และ Check ดึงไปใช้ต่อ
             sessionStorage.setItem("username", username);
             sessionStorage.setItem("table", table);
 
@@ -117,17 +109,19 @@
               timer: 2000,
               timerProgressBar: true,
             }).then(() => {
+              // เปลี่ยนหน้าต่างไปยัง Path ที่ได้จาก Server
               window.location.href = redirectPath;
             });
           } else {
             Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Something went wrong', confirmButtonColor: "#1AC8DB" });
           }
         } catch (error) {
-          console.error(error);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: "#1AC8DB" });
+          console.error("Login Error: ", error);
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server. Please check if app.js is running.', confirmButtonColor: "#1AC8DB" });
         }
       }
 
+      // รองรับการกดปุ่ม Enter เพื่อ Login
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter") doLogin();
       });

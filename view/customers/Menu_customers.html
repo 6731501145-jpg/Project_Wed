@@ -15,7 +15,7 @@
         <span class="text-xl">✦</span>
         <h1 class="text-xl font-bold">Food ordering system</h1>
       </div>
-      <button onclick="window.location.href = '/public/index.html'" class="border border-gray-400 px-4 py-1 rounded-md text-sm hover:bg-gray-200">
+      <button onclick="window.location.href = '/view/customers/Login_customers.html'" class="border border-gray-400 px-4 py-1 rounded-md text-sm hover:bg-gray-200">
         back to login
       </button>
     </div>
@@ -25,13 +25,13 @@
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
           style="background-color: #1ac8db">menu
         </span>
-        <a href="/public/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/view/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           cart
         </a>
-        <a href="/public/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/view/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           check
         </a>
-        <a href="/public/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           payment
         </a>
       </div>
@@ -55,65 +55,101 @@
   </div>
 
 <script>
-  var products = [
-    { "name": "Pad Thai", "price": 50, "image": "pad-thai.png" },
-    { "name": "Fried Rice", "price": 45, "image": "fried-rice.png" },
-    { "name": "Omelet", "price": 40, "image": "omelet.png" },
-    { "name": "Green Curry", "price": 60, "image": "green-curry.png" },
-    { "name": "Tom Yum Soup", "price": 70, "image": "tom-yum-soup.png" },
-    { "name": "Pad Krapow", "price": 45, "image": "pad-krapow.png" }
-  ];
+  const API_BASE = 'http://localhost:3000';
+  let products = [];
+  let cart = (JSON.parse(localStorage.getItem('customer_cart') || '[]'))
+    .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
 
-  // เรียกใช้ครั้งแรกเพื่อแสดงทั้งหมด
-  showProduct('');
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchProducts();
+  });
 
-  function showProduct(filterText) {
-    let data = '';
-    
-    // กรองสินค้าตามตัวอักษรที่พิมพ์
-    const filteredProducts = products.filter(product => 
-        product.name.toLowerCase().includes(filterText.toLowerCase())
-    );
-
-    if (filteredProducts.length === 0) {
-        data = `<div class="col-span-full text-center py-10 text-gray-500">Menu not found.</div>`;
-    } else {
-        filteredProducts.forEach(function (product, index) {
-            data += `
-            <div class="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-100">
-               <div class="bg-slate-200 h-40 rounded-lg flex justify-center items-center mb-4 overflow-hidden">
-                  <img class="w-full h-full object-cover" src="/view/${product.image}" alt="${product.name}">
-               </div>
-              <div class="flex justify-between items-center mb-4">
-                <span class="text-lg font-semibold">${product.name}</span>
-                <span class="text-lg font-semibold">${product.price} baht</span>
-              </div>
-              <div class="flex justify-center">
-               <div class="bg-white rounded-full px-6 py-2 flex items-center gap-6 shadow-sm border border-gray-100">
-                 <button onclick="changeCount('count-${product.name}', -1)" class="text-cyan-500 text-xl font-bold hover:text-black">-</button>
-                 <span id="count-${product.name}" class="font-bold min-w-[20px] text-center">0</span>   
-                 <button onclick="changeCount('count-${product.name}', 1)" class="text-cyan-500 text-xl font-bold hover:text-black">+</button>
-               </div>
-              </div>
-            </div>
-            `;
-        });
+  async function fetchProducts(keyword = '') {
+    try {
+      const url = keyword.trim()
+        ? `${API_BASE}/customers/search?name=${encodeURIComponent(keyword)}`
+        : `${API_BASE}/customers/products`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Cannot load menu');
+      products = await res.json();
+      renderProducts();
+    } catch (err) {
+      document.querySelector('#product_display').innerHTML = `
+        <div class="col-span-full text-center py-10 text-red-500">Failed to load menu, please try again.</div>
+      `;
+      console.error(err);
     }
-    document.querySelector('#product_display').innerHTML = data;
+  }
+
+  function renderProducts() {
+    if (!products || products.length === 0) {
+      document.querySelector('#product_display').innerHTML = `
+        <div class="col-span-full text-center py-10 text-gray-500">Menu not found.</div>
+      `;
+      return;
+    }
+
+    const cards = products.map((product) => {
+      const currentQty = getQty(product.id);
+      const imageSrc = product.image?.startsWith('http')
+        ? product.image
+        : `/view/${product.image || ''}`;
+
+      return `
+        <div class="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-100">
+          <div class="bg-slate-200 h-40 rounded-lg flex justify-center items-center mb-4 overflow-hidden">
+            <img class="w-full h-full object-cover" src="${imageSrc}" alt="${product.name}">
+          </div>
+          <div class="flex justify-between items-center mb-4">
+            <span class="text-lg font-semibold">${product.name}</span>
+            <span class="text-lg font-semibold">${product.price} baht</span>
+          </div>
+          <div class="flex justify-center">
+            <div class="bg-white rounded-full px-6 py-2 flex items-center gap-6 shadow-sm border border-gray-100">
+              <button onclick="changeCount(${product.id}, -1)" class="text-cyan-500 text-xl font-bold hover:text-black">-</button>
+              <span id="count-${product.id}" class="font-bold min-w-[20px] text-center">${currentQty}</span>   
+              <button onclick="changeCount(${product.id}, 1)" class="text-cyan-500 text-xl font-bold hover:text-black">+</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.querySelector('#product_display').innerHTML = cards;
   }
 
   // ฟังก์ชันดักจับการพิมพ์ในช่อง Search
   function searchProduct() {
-      const text = document.getElementById('search_input').value;
-      showProduct(text);
+    const text = document.getElementById('search_input').value;
+    fetchProducts(text);
   }
 
-  function changeCount(id, amount) {
-    const countElement = document.getElementById(id);
-    let currentCount = parseInt(countElement.innerText);
-    let newCount = currentCount + amount;
-    if (newCount < 0) newCount = 0;
-    countElement.innerText = newCount;
+  function getQty(id) {
+    const item = cart.find((c) => c.id === id);
+    return item ? item.qty : 0;
+  }
+
+  function changeCount(productId, amount) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+
+    const existing = cart.find((c) => c.id === productId);
+    const newQty = (existing ? existing.qty : 0) + amount;
+
+    if (newQty <= 0) {
+      cart = cart.filter((c) => c.id !== productId);
+    } else {
+      if (existing) {
+        existing.qty = newQty;
+      } else {
+        cart.push({ id: product.id, name: product.name, price: product.price, image: product.image, qty: newQty });
+      }
+    }
+
+    localStorage.setItem('customer_cart', JSON.stringify(cart));
+
+    const counter = document.getElementById(`count-${productId}`);
+    if (counter) counter.innerText = Math.max(newQty, 0);
   }
 </script>
 

@@ -3,26 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="PAYMEANT.css">
+    <link rel="stylesheet" href="/view/css/PAYMEANT.css">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <title>PAYMENT</title>
 </head>
 <body>
     <div class="navbar">
-        <a href="#" class="btn-login">Login</a>
+        <a href="#" class="btn-login">Login</a> 
     </div>
     
-    <div class="flex justify-center mb-10">
-        <div class="bg-white rounded-full shadow-lg p-1 flex items-center gap-6 px-8 py-2">
-            <button class="bg-cyan-400 text-white px-6 py-2 rounded-full font-medium">menu</button>
-            <button class="text-gray-600 hover:text-black">cart</button>
-            <button class="text-gray-600 hover:text-black">check</button>
-            <button class="text-gray-600 hover:text-black">payment</button>
-        </div>
+    <div class="flex justify-center mt-6 md:mt-10 px-4">
+      <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
+        <a href="/view/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+            menu
+        </span>
+        <a href="/view/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          cart
+        </a>
+        <a href="/view/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+          check
+        </a>
+        <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+        style="background-color: #1ac8db">
+          payment
+        </a>
+      </div>
     </div>
 
-    <div class="text-box">TABLE 4</div>
+    <div class="text-box" data-table-text>TABLE</div>
 
     <div class="text-box2">
         <div class="order-row order-header">
@@ -44,7 +53,7 @@
             <div style="text-align: right;">
                 <span id="close-modal" style="cursor: pointer; font-size: 28px; color: #555;">&times;</span>
             </div>
-            <h2>TABLE 4</h2>
+            <h2 data-table-text>TABLE</h2>
             <div class="price-section">
                 <h3>TOTAL PRICE</h3>
                 <p><span id="modal-total-price">0</span> ฿</p> 
@@ -57,26 +66,53 @@
 
     <script>
     const API_URL = 'http://localhost:3000/api';
-    const TABLE_ID = '4';
+    const tableId = sessionStorage.getItem('table');
 
+    // Redirect ถ้ายังไม่ล็อกอิน
+    if (!tableId) {
+        alert('Please login first.');
+        window.location.href = '/view/customers/Login_customers.html';
+    }
+
+    // เปลี่ยนข้อความ TABLE ทั้งหมดบนหน้า
+    document.querySelectorAll('[data-table-text]').forEach(el => {
+        el.textContent = `TABLE ${tableId}`;
+    });
+
+    // โหลดข้อมูลรายการที่ยังไม่ได้จ่ายเงิน
     document.addEventListener('DOMContentLoaded', async () => {
         try {
-            const response = await fetch(`${API_URL}/checkout/${TABLE_ID}`);
-            const data = await response.json();
+            const response = await fetch(`${API_URL}/checkout/${tableId}`);
+            if (!response.ok) throw new Error('Cannot load checkout data');
 
-            if (data.items) {
-                const orderList = document.getElementById('order-list');
-                orderList.innerHTML = ''; 
-                data.items.forEach(item => {
+            const data = await response.json();
+            const orderList = document.getElementById('order-list');
+            orderList.innerHTML = '';
+
+            // กลุ่มรายการให้แสดงจำนวนถูกต้อง (API ส่งมาเป็นรายการย่อย)
+            const grouped = {};
+            (data.items || []).forEach(item => {
+                const key = item.menuName;
+                if (!grouped[key]) grouped[key] = { name: key, price: Number(item.price) || 0, qty: 0 };
+                grouped[key].qty += 1;
+            });
+
+            const rows = Object.values(grouped);
+            if (rows.length === 0) {
+                orderList.innerHTML = '<div class="order-row"><span class="col-menu">No pending items</span></div>';
+            } else {
+                rows.forEach(item => {
                     const row = document.createElement('div');
-                    row.className = 'order-row'; 
-                    row.innerHTML = `<span class="col-menu">${item.menuName}</span><span class="col-price">${item.price} ฿</span><span class="col-number">x${item.amount}</span>`;
+                    row.className = 'order-row';
+                    row.innerHTML = `<span class="col-menu">${item.name}</span><span class="col-price">${item.price} ฿</span><span class="col-number">x${item.qty}</span>`;
                     orderList.appendChild(row);
                 });
-                document.getElementById('modal-total-price').innerText = data.totalPrice;
             }
+
+            document.getElementById('modal-total-price').innerText = data.totalPrice ?? 0;
         } catch (error) {
             console.error('Error fetching data:', error);
+            document.getElementById('order-list').innerHTML = '<div class="order-row"><span class="col-menu text-red-500">Cannot load data</span></div>';
         }
     });
 
@@ -100,7 +136,7 @@
             const response = await fetch(`${API_URL}/pay`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tableId: TABLE_ID })
+                body: JSON.stringify({ tableId })
             });
             const data = await response.json();
             
