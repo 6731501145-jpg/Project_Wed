@@ -432,11 +432,35 @@ app.post('/customers/order/submit', async (req, res) => {
 });
 
 // ================= CHECKOUT =================
+app.get('/api/checkout/:tableId', async (req, res) => {
+    try {
+        const { tableId } = req.params;
+
+        const [items] = await db.execute(`
+            SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
+            FROM order_item oi
+            JOIN menu_item m ON oi.menu_id = m.menu_id
+            JOIN \`order\` o ON oi.order_id = o.order_id
+            WHERE o.table_id = ? AND o.status = 'done'
+        `, [tableId]);
+
+        const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
+
+        res.json({ items, totalPrice });
+
+    } catch (error) {
+        console.error("Checkout error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// ==========================================
+// 2. ยืนยันการชำระเงิน (เพิ่มการ Insert ข้อมูลลง Payment)
+// ==========================================
 app.post('/api/pay', async (req, res) => {
     try {
         const { tableId } = req.body;
 
-        // 🟢 แก้ไข 1: หา order ทั้งหมดที่มีสถานะเป็น 'done' แทน 'pending'
         const [orders] = await db.execute(
             'SELECT order_id FROM `order` WHERE table_id = ? AND status = ?',
             [tableId, 'done'] 
@@ -448,12 +472,20 @@ app.post('/api/pay', async (req, res) => {
 
         const orderIds = orders.map(o => o.order_id);
 
-        // 🔥 update payment 
-        // (ข้อแนะนำ: ใช้ db.query แทน db.execute เพื่อให้ใช้ IN (?) กับ Array ได้)
-        await db.query(
-            'UPDATE payment SET status = "completed", paid_at = NOW() WHERE order_id IN (?)',
-            [orderIds]
-        );
+        // 🟢 เพิ่มตรงนี้: วนลูปเพื่อเช็คและ Insert ข้อมูลลงตาราง payment
+        for (let id of orderIds) {
+            const [payResult] = await db.execute(
+                'UPDATE `payment` SET status = "completed", paid_at = NOW() WHERE order_id = ?',
+                [id]
+            );
+            // ถ้า Update ไม่เจอ (ยังไม่เคยมีบันทึก) ให้ Insert ใหม่
+            if (payResult.affectedRows === 0) {
+                await db.execute(
+                    'INSERT INTO `payment` (order_id, status, paid_at) VALUES (?, "completed", NOW())',
+                    [id]
+                );
+            }
+        }
 
         // 🔥 update order
         await db.query(
@@ -482,40 +514,15 @@ app.post('/api/pay', async (req, res) => {
 });
 
 // ==========================================
-// 1. ดึงข้อมูลไปแสดงหน้า PAYMENT (เปลี่ยนเป็น 'done')
-// ==========================================
-app.get('/api/checkout/:tableId', async (req, res) => {
-    try {
-        const { tableId } = req.params;
-
-        // 🟢 แก้ไข 2: เปลี่ยนเงื่อนไขค้นหา o.status เป็น 'done'
-        const [items] = await db.execute(`
-            SELECT m.name AS menuName, m.price
-            FROM order_item oi
-            JOIN menu_item m ON oi.menu_id = m.menu_id
-            JOIN \`order\` o ON oi.order_id = o.order_id
-            WHERE o.table_id = ? AND o.status = 'done'
-        `, [tableId]);
-
-        const totalPrice = items.reduce((sum, item) => sum + Number(item.price), 0);
-
-        res.json({ items, totalPrice });
-
-    } catch (error) {
-        console.error("Checkout error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// ==========================================
 // 3. ดึงข้อมูลใบเสร็จ สำหรับหน้า history2.html 
 // ==========================================
 app.get('/api/receipt/:tableId', async (req, res) => {
     try {
         const { tableId } = req.params;
 
-        const [orders] = await db.execute(`
-            SELECT o.order_id, p.paid_at 
+        // 🟢 เพิ่มตรงนี้: หาเวลาที่เพิ่งจ่ายบิลไปล่าสุด
+        const [latestPayment] = await db.execute(`
+            SELECT p.paid_at 
             FROM \`order\` o
             JOIN \`payment\` p ON o.order_id = p.order_id
             WHERE o.table_id = ? AND o.status = 'completed'
@@ -523,19 +530,21 @@ app.get('/api/receipt/:tableId', async (req, res) => {
             LIMIT 1
         `, [tableId]);
 
-        if (orders.length === 0) {
+        if (latestPayment.length === 0) {
             return res.status(404).json({ message: "ไม่พบข้อมูลใบเสร็จ" });
         }
 
-        const orderId = orders[0].order_id;
-        const paidAt = orders[0].paid_at;
+        const paidAt = latestPayment[0].paid_at;
 
+        // 🟢 เพิ่มตรงนี้: ดึงรายการอาหารทั้งหมดที่จ่ายพร้อมกันในเวลานั้น (ไม่โดน Limit แค่ออเดอร์เดียวแล้ว)
         const [items] = await db.execute(`
             SELECT m.name AS menuName, m.price, IFNULL(oi.amount, 1) AS amount 
             FROM order_item oi
             JOIN menu_item m ON oi.menu_id = m.menu_id
-            WHERE oi.order_id = ?
-        `, [orderId]);
+            JOIN \`order\` o ON oi.order_id = o.order_id
+            JOIN \`payment\` p ON o.order_id = p.order_id
+            WHERE o.table_id = ? AND o.status = 'completed' AND p.paid_at = ?
+        `, [tableId, paidAt]);
 
         const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
 
