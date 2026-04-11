@@ -568,6 +568,11 @@ app.get('/cook/orderoper', isAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'cooks', 'Order_cook.html'));
 });
 app.get('/', (req, res) => {
+    if (req.session.role === 'admin') {
+        return res.redirect('/admin/dashboard');
+    } else if (req.session.role === 'cook') {
+        return res.redirect('/cook/dashboard');
+    }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.get('/admin/cooks', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'Menu_admin.html')));
