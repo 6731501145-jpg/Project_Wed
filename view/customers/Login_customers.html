@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login Food Ordering</title>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
@@ -41,18 +45,8 @@
         <div class="mb-6">
           <label class="block text-sm font-medium mb-1">Table</label>
           <select id="tableSelect" class="select select-bordered w-full rounded-lg text-sm">
-            <option value="" disabled selected>Select your table</option>
-            <option value="1">Table 1</option>
-            <option value="2">Table 2</option>
-            <option value="3">Table 3</option>
-            <option value="4">Table 4</option>
-            <option value="5">Table 5</option>
-            <option value="6">Table 6</option>
-            <option value="7">Table 7</option>
-            <option value="8">Table 8</option>
-            <option value="9">Table 9</option>
-            <option value="10">Table 10</option>
-          </select>
+          <option value="" disabled selected>Loading tables...</option>
+        </select>
         </div>
 
         <button
@@ -85,12 +79,18 @@
 
         try {
           // เชื่อมต่อ API ของระบบหลังบ้าน (app.js)
-          const response = await fetch('http://localhost:3000/customers/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // แปลง table_number ให้เป็น Integer ตามที่ Database ต้องการ
-            body: JSON.stringify({ username: username, table_number: parseInt(table) })
-          });
+          const response = await fetch(
+            "http://localhost:3000/customers/login",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              // แปลง table_number ให้เป็น Integer ตามที่ Database ต้องการ
+              body: JSON.stringify({
+                username: username,
+                table_number: parseInt(table),
+              }),
+            },
+          );
 
           if (response.ok) {
             // รับ Path ที่ส่งมาจาก Server (/public/customers/Menu_customers.html)
@@ -113,14 +113,46 @@
               window.location.href = redirectPath;
             });
           } else {
-            Swal.fire({ icon: 'error', title: 'Login Failed', text: 'Something went wrong', confirmButtonColor: "#1AC8DB" });
+            Swal.fire({
+              icon: "error",
+              title: "Login Failed",
+              text: "Something went wrong",
+              confirmButtonColor: "#1AC8DB",
+            });
           }
         } catch (error) {
           console.error("Login Error: ", error);
-          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server. Please check if app.js is running.', confirmButtonColor: "#1AC8DB" });
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Cannot connect to server. Please check if app.js is running.",
+            confirmButtonColor: "#1AC8DB",
+          });
         }
       }
+      async function loadTables() {
+        const res = await fetch("http://localhost:3000/customers/tables");
+        const tables = await res.json();
 
+        const select = document.getElementById("tableSelect");
+        select.innerHTML = "";
+
+        if (tables.length === 0) {
+          select.innerHTML = "<option disabled>No tables</option>";
+          return;
+        }
+
+        select.innerHTML = '<option value="" disabled selected>Select table</option>';
+
+        tables.forEach(t => {
+          const option = document.createElement("option");
+          option.value = t.table_id;
+          option.textContent = "Table " + t.table_number;
+          select.appendChild(option);
+        });
+      }
+
+      window.onload = loadTables;
       // รองรับการกดปุ่ม Enter เพื่อ Login
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter") doLogin();

@@ -301,6 +301,16 @@ app.get('/api/cook/review/today', async (req, res) => {
 // ==========================================
 // 🍽️ 4. CUSTOMER SECTION (ระบบลูกค้า)
 // ==========================================
+app.get('/customers/tables', async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            'SELECT table_id, table_number FROM `table` WHERE status = "available"'
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).send('Server error');
+    }
+});
 app.post('/customers/login', async (req, res) => {
     try {
         const { username, table_number } = req.body;
