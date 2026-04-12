@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Page</title>
+    <link rel="stylesheet" href="/public/REVIEW.css">
+    <style>
+        /* เพิ่ม CSS เล็กน้อยเพื่อให้ดาวดูเหมือนกดได้ */
+        .star {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .star-dark {
+            color: #FFD700;
+        }
+
+        /* สมมติให้ดาวที่เลือกเป็นสีทอง */
+        .star-white {
+            color: #ccc;
+        }
+
+        /* ดาวที่ยังไม่เลือกเป็นสีเทา */
+    </style>
+</head>
+
+<body>
+
+    <div class="review-container">
+        <div class="review-header">
+            REVIEW
+        </div>
+
+        <div class="review-content">
+            <div class="stars" id="star-container">
+                <span class="star star-inactive" data-value="1">★</span>
+                <span class="star star-inactive" data-value="2">★</span>
+                <span class="star star-inactive" data-value="3">★</span>
+                <span class="star star-inactive" data-value="4">★</span>
+                <span class="star star-inactive" data-value="5">★</span>
+            </div>
+
+            <textarea id="review-text" class="review-textbox" placeholder="Tell us about your experience..."></textarea>
+        </div>
+    </div>
+
+    <div class="checkout-section">
+        <a href="#" id="btn-submit-review" class="btn-checkout">SUBMIT & CHECK OUT</a>
+    </div>
+
+    <script>
+        // ✅ อ่าน table จาก sessionStorage (บันทึกตอน Login) แทนการ hardcode
+        const TABLE_ID = sessionStorage.getItem('table') || '1';
+
+        // 🟢 ป้องกันการกลับมาหน้ารีวิวซ้ำ
+        // ถ้าโต๊ะนี้ทำการรีวิวไปแล้ว ให้เด้งไปหน้าบิล/History ทันที
+        if (sessionStorage.getItem('hasReviewed_' + TABLE_ID)) {
+            window.location.replace('/customers/history');
+        }
+
+        let currentRating = 0; // ตัวแปรเก็บคะแนนดาว (int)
+
+        // ฟังก์ชันอัปเดตสีดาว
+        function updateStarsDisplay(rating) {
+            const allStars = document.querySelectorAll('.star');
+            allStars.forEach(s => {
+                s.classList.remove('star-active');
+                s.classList.add('star-inactive');
+            });
+            allStars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.replace('star-inactive', 'star-active');
+                }
+            });
+        }
+
+        // 🟢 โหลดข้อมูลที่พิมพ์ค้างไว้ (Draft) กลับมาแสดงถ้ามีการรีเฟรชหน้า
+        const draftRating = sessionStorage.getItem('draftRating_' + TABLE_ID);
+        const draftComment = sessionStorage.getItem('draftComment_' + TABLE_ID);
+
+        if (draftRating) {
+            currentRating = parseInt(draftRating);
+            updateStarsDisplay(currentRating);
+        }
+        if (draftComment) {
+            document.getElementById('review-text').value = draftComment;
+        }
+
+        // 🟢 บันทึกข้อความรีวิวแบบเรียลไทม์เมื่อเริ่มพิมพ์
+        document.getElementById('review-text').addEventListener('input', function () {
+            sessionStorage.setItem('draftComment_' + TABLE_ID, this.value);
+        });
+
+        // 1. ระบบกดให้คะแนนดาว
+        const stars = document.querySelectorAll('.star');
+
+        stars.forEach(star => {
+            star.addEventListener('click', function () {
+                // ✅ แปลงเป็น int ทันทีเพื่อให้การเปรียบเทียบถูกต้อง
+                currentRating = parseInt(this.getAttribute('data-value'));
+
+                // 🟢 บันทึกดาวที่เลือกลง Draft
+                sessionStorage.setItem('draftRating_' + TABLE_ID, currentRating);
+
+                updateStarsDisplay(currentRating);
+            });
+        });
+
+        // 2. ระบบกดปุ่ม Submit ส่งข้อมูลไป Server
+        document.getElementById('btn-submit-review').addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            const reviewText = document.getElementById('review-text').value.trim();
+
+            // ✅ บังคับให้กดดาวก่อน submit
+            if (currentRating === 0) {
+                alert('กรุณาให้คะแนนดาวก่อนนะครับ!');
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit-review');
+            btn.textContent = 'Submitting...';
+            btn.style.opacity = '0.7';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                // ✅ ใช้ relative URL — ไม่ต้อง hardcode localhost
+                const response = await fetch('/api/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tableId: TABLE_ID,
+                        rating: currentRating,
+                        comment: reviewText
+                    })
+                });
+
+                if (response.ok) {
+                    // ✅ 200 — parse JSON ได้ปกติ
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Thank you for your review! 🌟');
+
+                        // บันทึกไว้ใน localStorage เพื่อให้หน้า history อ่านได้
+                        localStorage.setItem('savedRating', currentRating);
+                        localStorage.setItem('savedComment', reviewText);
+
+                        // 🟢 ลบข้อมูลที่พิมพ์ค้างไว้ออกเมื่อส่งสำเร็จ
+                        sessionStorage.removeItem('draftRating_' + TABLE_ID);
+                        sessionStorage.removeItem('draftComment_' + TABLE_ID);
+
+                        // 🟢 บันทึกสถานะว่าโต๊ะนี้ "รีวิวเรียบร้อยแล้ว"
+                        sessionStorage.setItem('hasReviewed_' + TABLE_ID, 'true');
+
+                        // 🟢 ใช้ replace() แทน href 
+                        // หน้า REVIEW จะหายไปจากประวัติเบราว์เซอร์ พอกด Back จะไม่มาโผล่หน้านี้
+                        window.location.replace('/api/receipt/');
+                    }
+                } else {
+                    // ✅ 400/500 — backend ส่ง plain text ต้องอ่านแบบ text() ไม่ใช่ json()
+                    const errorText = await response.text();
+                    alert('เกิดข้อผิดพลาด: ' + errorText);
+                    btn.textContent = 'SUBMIT & CHECK OUT';
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                }
+            } catch (error) {
+                console.error('Error submitting review:', error);
+                alert('ไม่สามารถเชื่อมต่อ Server ได้ กรุณาลองใหม่อีกครั้ง');
+                btn.textContent = 'SUBMIT & CHECK OUT';
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+            }
+        });
+    </script>
+</body>
+
+</html>
