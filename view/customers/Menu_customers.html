@@ -56,8 +56,15 @@
 
 <script>
   const API_BASE = 'http://localhost:3000';
+  const username = sessionStorage.getItem('username');
+
+  if (!username) {
+    window.location.href = '/view/customers/Login_customers.html';
+  }
+
+  const cartKey = `customer_cart_${username}`;
   let products = [];
-  let cart = (JSON.parse(localStorage.getItem('customer_cart') || '[]'))
+  let cart = (JSON.parse(localStorage.getItem(cartKey) || '[]'))
     .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -146,7 +153,7 @@
       }
     }
 
-    localStorage.setItem('customer_cart', JSON.stringify(cart));
+    localStorage.setItem(cartKey, JSON.stringify(cart));
 
     const counter = document.getElementById(`count-${productId}`);
     if (counter) counter.innerText = Math.max(newQty, 0);

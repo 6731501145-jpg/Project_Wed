@@ -122,7 +122,13 @@
 
     <script>
       const API_BASE = "http://localhost:3000";
-      let cart = JSON.parse(localStorage.getItem("customer_cart") || "[]");
+      const username = sessionStorage.getItem("username");
+      if (!username) {
+        window.location.href = "/view/customers/Login_customers.html";
+      }
+
+      const cartKey = `customer_cart_${username}`;
+      let cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
       let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
 
       document.addEventListener("DOMContentLoaded", () => {
@@ -181,7 +187,7 @@
       }
 
       function persistCart() {
-        localStorage.setItem("customer_cart", JSON.stringify(cart));
+        localStorage.setItem(cartKey, JSON.stringify(cart));
       }
 
       // ฟังก์ชันเปิดป๊อปอัพ
@@ -257,7 +263,7 @@
           }
 
           const result = await res.json();
-          localStorage.removeItem("customer_cart");
+          localStorage.removeItem(cartKey);
           cart = [];
           Swal.fire({
             icon: "success",
