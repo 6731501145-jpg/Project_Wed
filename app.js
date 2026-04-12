@@ -572,6 +572,62 @@ app.get('/api/receipt/:tableId', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
+// POST /api/review — ลูกค้าส่งรีวิวหลังชำระเงิน
+app.post('/api/review', async (req, res) => {
+    const { tableId, rating, comment } = req.body;
+
+    // ตรวจสอบข้อมูลขั้นต่ำ — ตาม spec: 400 text 'Missing rating or tableId'
+    if (!tableId || !rating) {
+        return res.status(400).send('Missing rating or tableId');
+    }
+
+    const ratingNum = parseInt(rating);
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        return res.status(400).send('Missing rating or tableId');
+    }
+
+    try {
+        // 1. หา customer ล่าสุดของโต๊ะนี้
+        const [customers] = await db.query(
+            'SELECT customer_id FROM customer WHERE table_id = ? ORDER BY created_at DESC LIMIT 1',
+            [tableId]
+        );
+
+        if (customers.length === 0) {
+            return res.status(404).send('ไม่พบข้อมูลลูกค้าของโต๊ะนี้');
+        }
+
+        const customer_id = customers[0].customer_id;
+
+        // 2. หา payment ล่าสุดของ customer นี้ (ถ้ามี)
+        const [payments] = await db.query(
+            `SELECT p.payment_id 
+             FROM payment p 
+             JOIN \`order\` o ON p.order_id = o.order_id 
+             WHERE o.customer_id = ? 
+             ORDER BY p.payment_id DESC LIMIT 1`,
+            [customer_id]
+        );
+
+        const payment_id = payments.length > 0 ? payments[0].payment_id : null;
+
+        // 3. บันทึก review ลงฐานข้อมูล
+        await db.query(
+            'INSERT INTO review (payment_id, customer_id, rating, comment, created_at) VALUES (?, ?, ?, ?, NOW())',
+            [payment_id, customer_id, ratingNum, comment || '']
+        );
+
+        // ✅ ตาม spec: 200 JSON {"success": true}
+        res.status(200).json({ success: true });
+
+    } catch (error) {
+        console.error('POST /api/review error:', error);
+        // ✅ ตาม spec: 500 text 'Server error'
+        res.status(500).send('Server error');
+    }
+});
+
 // ==========================================
 // 👮 5. ADMIN SECTION (จัดการกุ๊ก & เมนู)
 // ==========================================
@@ -766,6 +822,7 @@ app.get('/customers/menu', isCustomerAuth, (req, res) => {
 app.get('/customers/cart', isCustomerAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'cart_customers.html'));
 });
+app.get('/api/review/', (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'REVIEW.html')); });
 // ฟังก์ชันเช็คสิทธิ์แบบละเอียด
 const isAuth = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
