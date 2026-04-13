@@ -105,6 +105,7 @@
 
     // โหลดข้อมูลรายการที่ยังไม่ได้จ่ายเงิน
     document.addEventListener('DOMContentLoaded', async () => {
+        blockBack();
         const ok = await ensureSession();
         if (!ok) return;
         try {
@@ -194,6 +195,13 @@
             this.style.opacity = '1';
         }
     });
+
+    function blockBack() {
+        history.pushState(null, "", location.href);
+        window.addEventListener("popstate", () => {
+            history.pushState(null, "", location.href);
+        });
+    }
     </script>
 </body>
 </html>

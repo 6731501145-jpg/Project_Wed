@@ -166,8 +166,16 @@
         } catch (e) {}
       }
 
+      function blockBack() {
+        history.pushState(null, "", location.href);
+        window.addEventListener("popstate", () => {
+          history.pushState(null, "", location.href);
+        });
+      }
+
       // 1. ให้ฟังก์ชันทำงานทันทีที่โหลดหน้าเว็บเสร็จ
       window.onload = () => {
+        blockBack();
         renderOrders();
         // 2. ดึงข้อมูลใหม่ทุกๆ 5 วินาที (5000 มิลลิวินาที) เพื่อให้ลูกค้าเห็นอัปเดตแบบเรียลไทม์
         setInterval(renderOrders, 5000);

@@ -129,6 +129,7 @@
       let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
 
       document.addEventListener("DOMContentLoaded", () => {
+        blockBack();
         (async () => {
           await syncSession();
           username = sessionStorage.getItem("username");
@@ -317,6 +318,13 @@
             confirmButtonColor: "#1AC8DB",
           });
         }
+      }
+
+      function blockBack() {
+        history.pushState(null, "", location.href);
+        window.addEventListener("popstate", () => {
+          history.pushState(null, "", location.href);
+        });
       }
     </script>
   </body>

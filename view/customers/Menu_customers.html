@@ -64,6 +64,7 @@
     .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
 
   document.addEventListener('DOMContentLoaded', () => {
+    blockBack();
     (async () => {
       await syncSession();
       username = sessionStorage.getItem('username');
@@ -93,6 +94,14 @@
     } catch (e) {
       // ignore, จะถูก redirect ตอนสั่งซื้อถ้า 401
     }
+  }
+
+  // กันกดย้อนกลับ
+  function blockBack() {
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', () => {
+      history.pushState(null, '', location.href);
+    });
   }
 
   async function fetchProducts(keyword = '') {
