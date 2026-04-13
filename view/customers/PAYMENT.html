@@ -78,12 +78,24 @@
     </div>
     <script>
     const API_URL = 'http://localhost:3000/api';
-    const tableId = sessionStorage.getItem('table');
-
-    // Redirect ถ้ายังไม่ล็อกอิน
-    if (!tableId) {
+    let tableId = sessionStorage.getItem('table');
+    // ถ้า sessionStorage หาย ลอง sync จาก server
+    async function ensureSession() {
+        if (tableId) return true;
+        try {
+            const res = await fetch('http://localhost:3000/customers/session', { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                sessionStorage.setItem('table', data.table);
+                sessionStorage.setItem('username', data.username || '');
+                sessionStorage.setItem('customer_id', data.customer_id);
+                tableId = data.table;
+                return true;
+            }
+        } catch (e) {}
         alert('Please login first.');
         window.location.href = '/view/customers/Login_customers.html';
+        return false;
     }
 
     // เปลี่ยนข้อความ TABLE ทั้งหมดบนหน้า
@@ -93,20 +105,30 @@
 
     // โหลดข้อมูลรายการที่ยังไม่ได้จ่ายเงิน
     document.addEventListener('DOMContentLoaded', async () => {
+        const ok = await ensureSession();
+        if (!ok) return;
         try {
-            const response = await fetch(`${API_URL}/checkout/${tableId}`);
+            const response = await fetch(`${API_URL}/checkout/${tableId}`, {
+                credentials: 'include'
+            });
+            if (response.status === 401) {
+                alert('Session expired, please login again.');
+                window.location.href = '/view/customers/Login_customers.html';
+                return;
+            }
             if (!response.ok) throw new Error('Cannot load checkout data');
 
             const data = await response.json();
             const orderList = document.getElementById('order-list');
             orderList.innerHTML = '';
 
-            // กลุ่มรายการให้แสดงจำนวนถูกต้อง (API ส่งมาเป็นรายการย่อย)
+            // กลุ่มรายการให้แสดงจำนวนถูกต้อง (รองรับทั้งกรณี API ส่ง amount มาแล้วหรือเป็นรายการย่อย)
             const grouped = {};
             (data.items || []).forEach(item => {
                 const key = item.menuName;
                 if (!grouped[key]) grouped[key] = { name: key, price: Number(item.price) || 0, qty: 0 };
-                grouped[key].qty += 1;
+                const addQty = Number(item.amount) || 1;
+                grouped[key].qty += addQty;
             });
 
             const rows = Object.values(grouped);
@@ -148,12 +170,22 @@
             const response = await fetch(`${API_URL}/pay`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ tableId })
             });
+            if (response.status === 401) {
+                alert('Session expired, please login again.');
+                window.location.href = '/view/customers/Login_customers.html';
+                return;
+            }
             const data = await response.json();
             
             if(data.success) {
                 window.location.href = 'REVIEW.html'; // ไปหน้า Review
+            } else {
+                alert(data.message || data.error || 'Payment failed');
+                this.innerText = 'CONFIRM PAYMENT';
+                this.style.opacity = '1';
             }
         } catch (error) {
             console.error("Payment error:", error);

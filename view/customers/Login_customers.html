@@ -60,6 +60,21 @@
     </div>
 
     <script>
+      // ถ้ามี session อยู่แล้ว ให้เด้งไปหน้าเมนูทันที
+      async function redirectIfSession() {
+        try {
+          const res = await fetch("http://localhost:3000/customers/session", { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            sessionStorage.setItem("username", data.username || "");
+            sessionStorage.setItem("table", data.table);
+            sessionStorage.setItem("customer_id", data.customer_id);
+            window.location.href = "/customers/menu";
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
       async function doLogin() {
         // ดึงค่าและตัดช่องว่าง
         const username = document.getElementById("username").value.trim();
@@ -131,28 +146,40 @@
         }
       }
       async function loadTables() {
-        const res = await fetch("http://localhost:3000/customers/tables");
-        const tables = await res.json();
-
         const select = document.getElementById("tableSelect");
-        select.innerHTML = "";
+        select.innerHTML = '<option value="" disabled selected>Loading tables...</option>';
+        try {
+          const res = await fetch("http://localhost:3000/customers/tables", { cache: "no-store" });
+          if (!res.ok) throw new Error("fetch failed");
+          const tables = await res.json();
 
-        if (tables.length === 0) {
-          select.innerHTML = "<option disabled>No tables</option>";
-          return;
+          select.innerHTML = "";
+          if (!Array.isArray(tables) || tables.length === 0) {
+            select.innerHTML = "<option disabled>No tables available</option>";
+            return;
+          }
+
+          select.innerHTML = '<option value="" disabled selected>Select table</option>';
+          tables.forEach(t => {
+            const option = document.createElement("option");
+            option.value = t.table_id;
+            option.textContent = "Table " + t.table_number;
+            select.appendChild(option);
+          });
+        } catch (err) {
+          console.error("Load tables error:", err);
+          select.innerHTML = "<option disabled>Cannot load tables</option>";
+          Swal.fire({
+            icon: "error",
+            title: "Cannot load tables",
+            text: "Please check server connection.",
+            confirmButtonColor: "#1AC8DB",
+          });
         }
-
-        select.innerHTML = '<option value="" disabled selected>Select table</option>';
-
-        tables.forEach(t => {
-          const option = document.createElement("option");
-          option.value = t.table_id;
-          option.textContent = "Table " + t.table_number;
-          select.appendChild(option);
-        });
       }
 
       window.onload = loadTables;
+      redirectIfSession();
       // รองรับการกดปุ่ม Enter เพื่อ Login
       document.addEventListener("keydown", (e) => {
         if (e.key === "Enter") doLogin();

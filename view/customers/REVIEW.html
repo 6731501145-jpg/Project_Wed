@@ -37,73 +37,100 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:3000/api';
-        const TABLE_ID = '4'; // สมมติว่าเป็นโต๊ะ 4
-        let currentRating = 0; // ตัวแปรเก็บคะแนนดาว
-
-        // 1. ระบบกดให้คะแนนดาว
-        const stars = document.querySelectorAll('.star');
-        
-        stars.forEach(star => {
-            star.addEventListener('click', function() {
-                currentRating = this.getAttribute('data-value'); // ดึงค่า 1-5 ออกมา
-                
-                // วนลูปเปลี่ยนสีดาว
-                stars.forEach(s => {
-                    if (s.getAttribute('data-value') <= currentRating) {
-                        s.classList.add('star-dark');
-                        s.classList.remove('star-white');
+        (async () => {
+            const API_URL = 'http://localhost:3000/api';
+            let TABLE_ID = sessionStorage.getItem('table');
+            if (!TABLE_ID) {
+                try {
+                    const res = await fetch(`${API_URL.replace('/api','')}/customers/session`, { credentials: 'include' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        sessionStorage.setItem('table', data.table);
+                        sessionStorage.setItem('username', data.username || '');
+                        sessionStorage.setItem('customer_id', data.customer_id);
+                        TABLE_ID = data.table;
                     } else {
-                        s.classList.add('star-white');
-                        s.classList.remove('star-dark');
+                        alert('Please login first.');
+                        window.location.href = '/view/customers/Login_customers.html';
+                        return;
                     }
+                } catch (e) {
+                    alert('Please login first.');
+                    window.location.href = '/view/customers/Login_customers.html';
+                    return;
+                }
+            }
+            let currentRating = 0; // ตัวแปรเก็บคะแนนดาว
+
+            // 1. ระบบกดให้คะแนนดาว
+            const stars = document.querySelectorAll('.star');
+            
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    currentRating = this.getAttribute('data-value'); // ดึงค่า 1-5 ออกมา
+                    
+                    // วนลูปเปลี่ยนสีดาว
+                    stars.forEach(s => {
+                        if (s.getAttribute('data-value') <= currentRating) {
+                            s.classList.add('star-dark');
+                            s.classList.remove('star-white');
+                        } else {
+                            s.classList.add('star-white');
+                            s.classList.remove('star-dark');
+                        }
+                    });
                 });
             });
-        });
 
-        // 2. ระบบกดปุ่ม Submit ส่งข้อมูลไป Server
-        document.getElementById('btn-submit-review').addEventListener('click', async (e) => {
-            e.preventDefault(); // ป้องกันไม่ให้ลิงก์เปลี่ยนหน้าทันที
+            // 2. ระบบกดปุ่ม Submit ส่งข้อมูลไป Server
+            document.getElementById('btn-submit-review').addEventListener('click', async (e) => {
+                e.preventDefault(); // ป้องกันไม่ให้ลิงก์เปลี่ยนหน้าทันที
 
-            const reviewText = document.getElementById('review-text').value;
+                const reviewText = document.getElementById('review-text').value;
 
-            // ตรวจสอบว่าลูกค้าให้ดาวหรือยัง (ใน Requirement บอกว่า Optional แต่ถ้าบังคับให้กดดาวค่อยเปิดใช้เงื่อนไขนี้ได้ครับ)
-            /*
-            if (currentRating === 0) {
-                alert('กรุณาให้คะแนนดาวก่อนนะครับ!');
-                return;
-            }
-            */
-
-            try {
-                // ยิงข้อมูลไปที่ API
-                const response = await fetch(`${API_URL}/review`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        tableId: TABLE_ID,
-                        rating: currentRating,
-                        comment: reviewText
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    alert('Thank you for your review!');
-                    
-                    // 🟢 เพิ่ม 2 บรรทัดนี้ เพื่อฝากคะแนนและข้อความไว้ในเบราว์เซอร์ชั่วคราว
-                    localStorage.setItem('savedRating', currentRating);
-                    localStorage.setItem('savedComment', reviewText);
-
-                    // ส่งรีวิวเสร็จ พาไปหน้าใบเสร็จ
-                    window.location.href = 'history2.html'; 
+                // ตรวจสอบว่าลูกค้าให้ดาวหรือยัง (ใน Requirement บอกว่า Optional แต่ถ้าบังคับให้กดดาวค่อยเปิดใช้เงื่อนไขนี้ได้ครับ)
+                if (currentRating === 0) {
+                    alert('กรุณาให้คะแนนดาวก่อนนะครับ!');
+                    return;
                 }
-            } catch (error) {
-                console.error('Error submitting review:', error);
-                alert('เกิดข้อผิดพลาดในการส่งรีวิว');
-            }
-        });
+
+                try {
+                    // ยิงข้อมูลไปที่ API
+                    const response = await fetch(`${API_URL}/review`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            tableId: TABLE_ID,
+                            rating: currentRating,
+                            comment: reviewText
+                        })
+                    });
+
+                    if (response.status === 401) {
+                        alert('Session expired, please login again.');
+                        window.location.href = '/view/customers/Login_customers.html';
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Thank you for your review!');
+                        
+                        // 🟢 ฝากคะแนนและข้อความไว้ในเบราว์เซอร์ชั่วคราว
+                        localStorage.setItem('savedRating', currentRating);
+                        localStorage.setItem('savedComment', reviewText);
+
+                        // ส่งรีวิวเสร็จ พาไปหน้าใบเสร็จ
+                        window.location.href = 'history2.html'; 
+                    }
+                } catch (error) {
+                    console.error('Error submitting review:', error);
+                    alert('เกิดข้อผิดพลาดในการส่งรีวิว');
+                }
+            });
+        })();
     </script>
 </body>
 </html>

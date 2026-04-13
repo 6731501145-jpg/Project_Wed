@@ -122,18 +122,40 @@
 
     <script>
       const API_BASE = "http://localhost:3000";
-      const username = sessionStorage.getItem("username");
-      if (!username) {
-        window.location.href = "/view/customers/Login_customers.html";
-      }
+      let username = sessionStorage.getItem("username");
 
-      const cartKey = `customer_cart_${username}`;
+      let cartKey = `customer_cart_${username}`;
       let cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
       let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
 
       document.addEventListener("DOMContentLoaded", () => {
-        renderCart();
+        (async () => {
+          await syncSession();
+          username = sessionStorage.getItem("username");
+          if (!username) {
+            window.location.href = "/view/customers/Login_customers.html";
+            return;
+          }
+          cartKey = `customer_cart_${username}`;
+          cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+          renderCart();
+        })();
       });
+
+      async function syncSession() {
+        if (sessionStorage.getItem("username") && sessionStorage.getItem("table")) return;
+        try {
+          const res = await fetch(`${API_BASE}/customers/session`, { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            sessionStorage.setItem("username", data.username || "");
+            sessionStorage.setItem("table", data.table);
+            sessionStorage.setItem("customer_id", data.customer_id);
+          } else if (res.status === 401) {
+            window.location.href = "/view/customers/Login_customers.html";
+          }
+        } catch (e) {}
+      }
 
       function renderCart() {
         const listEl = document.querySelector("#orderList");
@@ -254,8 +276,21 @@
           const res = await fetch(`${API_BASE}/customers/order/submit`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify(payload),
           });
+
+          if (res.status === 401) {
+            Swal.fire({
+              icon: "error",
+              title: "Session expired",
+              text: "Please login again.",
+              confirmButtonColor: "#1AC8DB",
+            }).then(() => {
+              window.location.href = "/view/customers/Login_customers.html";
+            });
+            return;
+          }
 
           if (!res.ok) {
             const msg = await res.text();
