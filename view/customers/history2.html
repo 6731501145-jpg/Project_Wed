@@ -51,116 +51,167 @@
    <div class="action-buttons" style="display: flex; justify-content: center; gap: 20px; margin-top: 30px; margin-bottom: 50px;">
         <button id="btn-download" style="background: #FF9800; color: white; padding: 10px 30px; border-radius: 20px; border: none; font-weight: bold; font-size: 18px; cursor: pointer; font-family: 'Rockwell', 'Georgia', serif;">DOWNLOAD</button>
         
-        <a href="PAYMENT.html" class="btn-goback" style="background: #1AC8DB; color: white; padding: 10px 30px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 18px; display: flex; align-items: center;">GO BACK</a>
+        <button id="btn-goback" class="btn-goback" style="background: #1AC8DB; color: white; padding: 10px 30px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 18px; display: flex; align-items: center; border: none; cursor: pointer;">GO BACK</button>
     </div>
 
     <script>
-        const API_URL = 'http://localhost:3000/api';
-        const TABLE_ID = sessionStorage.getItem('table');
+        (async () => {
+            blockBack();
+            const API_URL = 'http://localhost:3000/api';
+            let TABLE_ID = sessionStorage.getItem('table');
 
-        if (!TABLE_ID) {
-            alert('Please login first.');
-            window.location.href = '/view/customers/Login_customers.html';
-        }
-        document.getElementById('table-label').innerText = `TABLE ${TABLE_ID}`;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const response = await fetch(`${API_URL}/receipt/${TABLE_ID}`);
-
-                if (!response.ok) {
-                    document.getElementById('receipt-items').innerHTML = '<span style="color:red;">ไม่พบใบเสร็จ</span>';
-                    document.getElementById('receipt-total').innerText = 'TOTAL PRICE : 0 ฿';
+            if (!TABLE_ID) {
+                try {
+                    const res = await fetch(`${API_URL.replace('/api','')}/customers/session`, { credentials: 'include' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        sessionStorage.setItem('table', data.table);
+                        sessionStorage.setItem('username', data.username || '');
+                        sessionStorage.setItem('customer_id', data.customer_id);
+                        TABLE_ID = data.table;
+                    } else {
+                        alert('Please login first.');
+                        window.location.href = '/view/customers/Login_customers.html';
+                        return;
+                    }
+                } catch (e) {
+                    alert('Please login first.');
+                    window.location.href = '/view/customers/Login_customers.html';
                     return;
                 }
+            }
+            document.getElementById('table-label').innerText = `TABLE ${TABLE_ID}`;
 
-                const data = await response.json();
-
-                if (data.items) {
-                    // 🟢 นำชื่อลูกค้ามาใส่ (ถ้าไม่มีข้อมูลให้ขึ้นว่า 'ลูกค้าทั่วไป')
-                    document.getElementById('customer-name').innerText = data.customerName || 'ลูกค้าทั่วไป';
-
-                    if (data.paidAt) {
-                        const dateObj = new Date(data.paidAt);
-                        document.getElementById('receipt-date').innerText = 
-                            dateObj.toLocaleDateString('th-TH') + ' ' + dateObj.toLocaleTimeString('th-TH');
-                    } else {
-                        document.getElementById('receipt-date').innerText = 'ยังไม่ได้ชำระเงิน';
-                    }
-
-                    const itemsContainer = document.getElementById('receipt-items');
-                    itemsContainer.innerHTML = ''; 
-                    
-                    data.items.forEach(item => {
-                        const row = document.createElement('div');
-                        row.style.display = 'flex';
-                        row.style.justifyContent = 'space-between';
-                        row.innerHTML = `
-                            <span style="flex: 1; text-align: left;">${item.menuName}</span>
-                            <span style="flex: 1; text-align: center;">${item.price} ฿</span>
-                            <span style="flex: 1; text-align: right;">x${item.amount}</span>
-                        `;
-                        itemsContainer.appendChild(row);
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    const response = await fetch(`${API_URL}/receipt/${TABLE_ID}`, {
+                        credentials: 'include'
                     });
 
-                    document.getElementById('receipt-total').innerText = `TOTAL PRICE : ${data.totalPrice} ฿`;
-                }
-            } catch (error) {
-                console.error('Error fetching receipt:', error);
-                document.getElementById('receipt-items').innerHTML = '<span style="color:red;">Cannot load receipt</span>';
-            }
-
-            const savedRating = localStorage.getItem('savedRating');
-            const savedComment = localStorage.getItem('savedComment');
-
-            if (savedRating && savedRating > 0) {
-                document.getElementById('review-display-section').style.display = 'block';
-                
-                let starsHtml = '';
-                for (let i = 1; i <= 5; i++) {
-                    if (i <= savedRating) {
-                        starsHtml += '<span style="color: #FFD700; margin: 0 2px;">★</span>'; 
-                    } else {
-                        starsHtml += '<span style="color: #ccc; margin: 0 2px;">★</span>';   
+                    if (response.status === 401) {
+                        alert('Session expired, please login again.');
+                        window.location.href = '/view/customers/Login_customers.html';
+                        return;
                     }
+
+                    if (!response.ok) {
+                        document.getElementById('receipt-items').innerHTML = '<span style="color:red;">ไม่พบใบเสร็จ</span>';
+                        document.getElementById('receipt-total').innerText = 'TOTAL PRICE : 0 ฿';
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (data.items) {
+                        // 🟢 นำชื่อลูกค้ามาใส่ (ถ้าไม่มีข้อมูลให้ขึ้นว่า 'ลูกค้าทั่วไป')
+                        document.getElementById('customer-name').innerText = data.customerName || 'ลูกค้าทั่วไป';
+
+                        if (data.paidAt) {
+                            const dateObj = new Date(data.paidAt);
+                            document.getElementById('receipt-date').innerText = 
+                                dateObj.toLocaleDateString('th-TH') + ' ' + dateObj.toLocaleTimeString('th-TH');
+                        } else {
+                            document.getElementById('receipt-date').innerText = 'ยังไม่ได้ชำระเงิน';
+                        }
+
+                        const itemsContainer = document.getElementById('receipt-items');
+                        itemsContainer.innerHTML = ''; 
+                        
+                        data.items.forEach(item => {
+                            const row = document.createElement('div');
+                            row.style.display = 'flex';
+                            row.style.justifyContent = 'space-between';
+                            row.innerHTML = `
+                                <span style="flex: 1; text-align: left;">${item.menuName}</span>
+                                <span style="flex: 1; text-align: center;">${item.price} ฿</span>
+                                <span style="flex: 1; text-align: right;">x${item.amount}</span>
+                            `;
+                            itemsContainer.appendChild(row);
+                        });
+
+                        document.getElementById('receipt-total').innerText = `TOTAL PRICE : ${data.totalPrice} ฿`;
+                    }
+                } catch (error) {
+                    console.error('Error fetching receipt:', error);
+                    document.getElementById('receipt-items').innerHTML = '<span style="color:red;">Cannot load receipt</span>';
                 }
-                document.getElementById('receipt-stars').innerHTML = starsHtml;
 
-                if (savedComment && savedComment.trim() !== '') {
-                    document.getElementById('receipt-comment').innerText = `"${savedComment}"`;
+                const savedRating = localStorage.getItem('savedRating');
+                const savedComment = localStorage.getItem('savedComment');
+
+                if (savedRating && savedRating > 0) {
+                    document.getElementById('review-display-section').style.display = 'block';
+                    
+                    let starsHtml = '';
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= savedRating) {
+                            starsHtml += '<span style="color: #FFD700; margin: 0 2px;">★</span>'; 
+                        } else {
+                            starsHtml += '<span style="color: #ccc; margin: 0 2px;">★</span>';   
+                        }
+                    }
+                    document.getElementById('receipt-stars').innerHTML = starsHtml;
+
+                    if (savedComment && savedComment.trim() !== '') {
+                        document.getElementById('receipt-comment').innerText = `"${savedComment}"`;
+                    }
+                    
+                    localStorage.removeItem('savedRating');
+                    localStorage.removeItem('savedComment');
                 }
-                
-                localStorage.removeItem('savedRating');
-                localStorage.removeItem('savedComment');
-            }
-        });
-
-        document.getElementById('btn-download').addEventListener('click', function() {
-            const btn = this;
-            const originalText = btn.innerText;
-            btn.innerText = 'DOWNLOADING...';
-            btn.style.opacity = '0.7';
-
-            const receiptElement = document.querySelector('.receipt-box');
-
-            html2canvas(receiptElement, {
-                scale: 2, 
-                backgroundColor: "#ffffff" 
-            }).then(canvas => {
-                const imageURL = canvas.toDataURL('image/png');
-                const downloadLink = document.createElement('a');
-                downloadLink.href = imageURL;
-                // 🟢 เปลี่ยนชื่อไฟล์ให้มีเบอร์โต๊ะ
-                downloadLink.download = `Receipt_Table_${TABLE_ID}.png`; 
-                
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
-
-                btn.innerText = originalText;
-                btn.style.opacity = '1';
             });
-        });
+
+            document.getElementById('btn-download').addEventListener('click', function() {
+                const btn = this;
+                const originalText = btn.innerText;
+                btn.innerText = 'DOWNLOADING...';
+                btn.style.opacity = '0.7';
+
+                const receiptElement = document.querySelector('.receipt-box');
+
+                html2canvas(receiptElement, {
+                    scale: 2, 
+                    backgroundColor: "#ffffff" 
+                }).then(canvas => {
+                    const imageURL = canvas.toDataURL('image/png');
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = imageURL;
+                    // 🟢 เปลี่ยนชื่อไฟล์ให้มีเบอร์โต๊ะ
+                    downloadLink.download = `Receipt_Table_${TABLE_ID}.png`; 
+                    
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+
+                    btn.innerText = originalText;
+                    btn.style.opacity = '1';
+                });
+            });
+
+            // ออกจาก session ลูกค้าและกลับหน้าแรก
+            document.getElementById('btn-goback').addEventListener('click', async () => {
+                try {
+                    await fetch('/logout', { credentials: 'include' });
+                } catch (e) {
+                    // ignore
+                }
+                const username = sessionStorage.getItem('username');
+                if (username) {
+                    localStorage.removeItem(`customer_cart_${username}`);
+                }
+                sessionStorage.removeItem('username');
+                sessionStorage.removeItem('table');
+                sessionStorage.removeItem('customer_id');
+                window.location.href = '/';
+            });
+        })();
+
+        function blockBack() {
+            history.pushState(null, "", location.href);
+            window.addEventListener("popstate", () => {
+                history.pushState(null, "", location.href);
+            });
+        }
     </script>
 </body>
 </html>

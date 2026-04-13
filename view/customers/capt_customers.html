@@ -1,15 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>Food ordering</title>
-</head>
-<body>
+  </head>
+  <body>
     <div class="min-h-screen bg-gray-100 p-8">
+<<<<<<< HEAD
   <div class="flex justify-between items-center mb-8">
     <div class="flex items-center gap-2">
       <span class="text-xl">✦</span>
@@ -33,75 +38,167 @@
         <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           payment
         </a>
+=======
+      <div class="flex justify-between items-center mb-8">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✦</span>
+          <h1 class="text-xl font-bold">Food ordering system</h1>
+        </div>
+        <button
+          onclick="
+            window.location.href = '/view/customers/Login_customers.html'
+          "
+          class="border border-gray-400 px-4 py-1 rounded-md text-sm hover:bg-gray-200"
+        >
+          back to login
+        </button>
+      </div>
+      <div class="flex justify-center mt-6 md:mt-10 px-4">
+        <div
+          class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg"
+        >
+          <a
+            href="/view/customers/Menu_customers.html"
+            class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+          >
+            menu
+          </a>
+          <span
+            class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
+            style="background-color: #1ac8db"
+            >cart
+          </span>
+          <a
+            href="/view/customers/check_customers.html"
+            class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+          >
+            check
+          </a>
+          <a
+            href="/view/customers/PAYMENT.html"
+            class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+          >
+            payment
+          </a>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center w-full px-4 mt-6 pb-16">
+        <div class="w-full max-w-lg">
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900">
+            My Basket
+          </h1>
+          <p class="text-sm md:text-base font-medium text-gray-500">
+            Review your order
+          </p>
+
+          <div id="orderList" class="flex flex-col gap-3"></div>
+        </div>
+      </div>
+
+      <div
+        class="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-white via-white/80 to-transparent z-50"
+      >
+        <div class="max-w-4xl mx-auto flex justify-center">
+          <button
+            id="orderBtn"
+            class="w-full md:w-64 bg-[#6EE76E] hover:bg-[#5cd65c] text-white py-3 rounded-full text-xl font-bold shadow-md flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 active:shadow-inner"
+          >
+            ORDER
+            <span class="text-2xl">→</span>
+          </button>
+        </div>
+>>>>>>> c51d27a6fe02f7594abd5247f2aa939d63284394
       </div>
     </div>
-
-    <div class="flex flex-col items-center w-full px-4 mt-6 pb-16">
-      <div class="w-full max-w-lg">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">My Basket</h1>
-        <p class="text-sm md:text-base font-medium text-gray-500">Review your order</p>
-        
-        <div id="orderList" class="flex flex-col gap-3">
-
+    <div
+      id="deleteModal"
+      class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all"
+      >
+        <div class="text-center">
+          <div
+            class="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+          >
+            <span class="text-red-500 text-4xl">🗑️</span>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">Remove Item?</h3>
+          <p class="text-gray-500 mb-8 px-4">
+            Are you sure you want to remove this item from your cart?
+          </p>
+          <div class="flex flex-col gap-3">
+            <button
+              id="confirmDeleteBtn"
+              class="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-100 active:scale-95"
+            >
+              Remove it
+            </button>
+            <button
+              onclick="closeModal()"
+              class="w-full py-3 text-gray-400 font-semibold hover:text-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-  
-<div class="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-white via-white/80 to-transparent z-50">
-  <div class="max-w-4xl mx-auto flex justify-center">
-    
-    <button id="orderBtn" class="w-full md:w-64 bg-[#6EE76E] hover:bg-[#5cd65c] text-white py-3 rounded-full text-xl font-bold shadow-md flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 active:shadow-inner">
-      ORDER
-      <span class="text-2xl">→</span>
-    </button>
-    
-  </div>
-</div>
- 
-</div>
-<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all">
-    <div class="text-center">
-      <div class="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-        <span class="text-red-500 text-4xl">🗑️</span>
-      </div>
-      <h3 class="text-2xl font-bold text-gray-900 mb-2">Remove Item?</h3>
-      <p class="text-gray-500 mb-8 px-4">Are you sure you want to remove this item from your cart?</p>
-      <div class="flex flex-col gap-3">
-        <button id="confirmDeleteBtn" class="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-100 active:scale-95">
-          Remove it
-        </button>
-        <button onclick="closeModal()" class="w-full py-3 text-gray-400 font-semibold hover:text-gray-600 transition-colors">
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+    <script>
+      const API_BASE = "http://localhost:3000";
+      let username = sessionStorage.getItem("username");
 
-<script>
-  const API_BASE = 'http://localhost:3000';
-  let cart = JSON.parse(localStorage.getItem('customer_cart') || '[]');
-  let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
+      let cartKey = `customer_cart_${username}`;
+      let cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+      let indexToDelete = null; // ตัวแปรเก็บ index ที่รอการลบ
 
-  document.addEventListener('DOMContentLoaded', () => {
-    renderCart();
-  });
+      document.addEventListener("DOMContentLoaded", () => {
+        blockBack();
+        (async () => {
+          await syncSession();
+          username = sessionStorage.getItem("username");
+          if (!username) {
+            window.location.href = "/view/customers/Login_customers.html";
+            return;
+          }
+          cartKey = `customer_cart_${username}`;
+          cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+          renderCart();
+        })();
+      });
 
-  function renderCart() {
-    const listEl = document.querySelector('#orderList');
+      async function syncSession() {
+        if (sessionStorage.getItem("username") && sessionStorage.getItem("table")) return;
+        try {
+          const res = await fetch(`${API_BASE}/customers/session`, { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            sessionStorage.setItem("username", data.username || "");
+            sessionStorage.setItem("table", data.table);
+            sessionStorage.setItem("customer_id", data.customer_id);
+          } else if (res.status === 401) {
+            window.location.href = "/view/customers/Login_customers.html";
+          }
+        } catch (e) {}
+      }
 
-    if (!cart.length) {
-      listEl.innerHTML = `
+      function renderCart() {
+        const listEl = document.querySelector("#orderList");
+
+        if (!cart.length) {
+          listEl.innerHTML = `
         <div class="text-center py-12 text-base-content/40">
           <div class="text-5xl mb-3">🛒</div>
           <p class="text-sm">No items in your cart yet.</p>
         </div>`;
-      return;
-    }
+          return;
+        }
 
-    const cards = cart.map((product, index) => `
+        const cards = cart
+          .map(
+            (product, index) => `
       <div class="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-50 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 gap-3 mb-3">
         <div class="flex-1 w-full flex items-center">
           <span class="text-base md:text-lg font-medium text-gray-800">${product.name}</span>
@@ -118,100 +215,143 @@
             <button onclick="changeCount(${index}, 1)" class="text-cyan-500 text-xl md:text-2xl hover:text-black">+</button>
           </div>
         </div>
-      </div>`).join('');
+      </div>`,
+          )
+          .join("");
 
-    listEl.innerHTML = cards;
-  }
+        listEl.innerHTML = cards;
+      }
 
-  function changeCount(index, amount) {
-    let currentCount = parseInt(cart[index].qty);
-    let newCount = currentCount + amount;
+      function changeCount(index, amount) {
+        let currentCount = parseInt(cart[index].qty);
+        let newCount = currentCount + amount;
 
-    if (newCount <= 0) {
-        openModal(index);
-    } else {
-        cart[index].qty = newCount;
-        persistCart();
-        renderCart();
-    }
-  }
+        if (newCount <= 0) {
+          openModal(index);
+        } else {
+          cart[index].qty = newCount;
+          persistCart();
+          renderCart();
+        }
+      }
 
-  function persistCart() {
-    localStorage.setItem('customer_cart', JSON.stringify(cart));
-  }
+      function persistCart() {
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+      }
 
-  // ฟังก์ชันเปิดป๊อปอัพ
-  function openModal(index) {
-      indexToDelete = index; // จำไว้ว่าจะลบตัวไหน
-      document.getElementById('deleteModal').classList.remove('hidden');
-  }
+      // ฟังก์ชันเปิดป๊อปอัพ
+      function openModal(index) {
+        indexToDelete = index; // จำไว้ว่าจะลบตัวไหน
+        document.getElementById("deleteModal").classList.remove("hidden");
+      }
 
-  // ฟังก์ชันปิดป๊อปอัพ
-  function closeModal() {
-      document.getElementById('deleteModal').classList.add('hidden');
-  }
+      // ฟังก์ชันปิดป๊อปอัพ
+      function closeModal() {
+        document.getElementById("deleteModal").classList.add("hidden");
+      }
 
-  // เมื่อกดปุ่ม "ลบทันที" ในป๊อปอัพ
-  document.getElementById('confirmDeleteBtn').onclick = function() {
-      if (indexToDelete !== null) {
+      // เมื่อกดปุ่ม "ลบทันที" ในป๊อปอัพ
+      document.getElementById("confirmDeleteBtn").onclick = function () {
+        if (indexToDelete !== null) {
           cart.splice(indexToDelete, 1); // ลบออกจาก Array
           persistCart();
           closeModal(); // ปิดป๊อปอัพ
           renderCart(); // วาดหน้าจอใหม่
+        }
+      };
+
+      document
+        .getElementById("orderBtn")
+        .addEventListener("click", submitOrder);
+
+      async function submitOrder() {
+        if (!cart.length) {
+          Swal.fire({
+            icon: "warning",
+            title: "Cart is empty",
+            text: "Please add items from menu first.",
+            confirmButtonColor: "#1AC8DB",
+          });
+          return;
+        }
+
+        const tableId = sessionStorage.getItem("table");
+        const customerId = sessionStorage.getItem("customer_id"); // เผื่อระบบ backend เพิ่ม field นี้ในอนาคต
+
+        if (!tableId) {
+          Swal.fire({
+            icon: "error",
+            title: "Please login again",
+            text: "Table number not found in session.",
+            confirmButtonColor: "#1AC8DB",
+          });
+          return;
+        }
+
+        const payload = {
+          cart: cart.map((item) => ({
+            id: item.id,
+            price: item.price,
+            qty: item.qty,
+          })),
+          total: cart.reduce((sum, item) => sum + item.price * item.qty, 0),
+          customer_id: customerId ? parseInt(customerId, 10) : null,
+          table_id: parseInt(tableId, 10),
+        };
+
+        try {
+          const res = await fetch(`${API_BASE}/customers/order/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+          });
+
+          if (res.status === 401) {
+            Swal.fire({
+              icon: "error",
+              title: "Session expired",
+              text: "Please login again.",
+              confirmButtonColor: "#1AC8DB",
+            }).then(() => {
+              window.location.href = "/view/customers/Login_customers.html";
+            });
+            return;
+          }
+
+          if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || "Order failed");
+          }
+
+          const result = await res.json();
+          localStorage.removeItem(cartKey);
+          cart = [];
+          Swal.fire({
+            icon: "success",
+            title: "Order sent!",
+            text: `Order #${result.order_id || ""} is now pending.`,
+            confirmButtonColor: "#1AC8DB",
+          }).then(() => {
+            window.location.href = "/view/customers/check_customers.html";
+          });
+        } catch (err) {
+          console.error(err);
+          Swal.fire({
+            icon: "error",
+            title: "Cannot send order",
+            text: err.message,
+            confirmButtonColor: "#1AC8DB",
+          });
+        }
       }
-  };
 
-  document.getElementById('orderBtn').addEventListener('click', submitOrder);
-
-  async function submitOrder() {
-    if (!cart.length) {
-      Swal.fire({ icon: 'warning', title: 'Cart is empty', text: 'Please add items from menu first.', confirmButtonColor: '#1AC8DB' });
-      return;
-    }
-
-    const tableId = sessionStorage.getItem('table');
-    const customerId = sessionStorage.getItem('customer_id'); // เผื่อระบบ backend เพิ่ม field นี้ในอนาคต
-
-    if (!tableId) {
-      Swal.fire({ icon: 'error', title: 'Please login again', text: 'Table number not found in session.', confirmButtonColor: '#1AC8DB' });
-      return;
-    }
-
-    const payload = {
-      cart: cart.map(item => ({ id: item.id, price: item.price, qty: item.qty })),
-      total: cart.reduce((sum, item) => sum + item.price * item.qty, 0),
-      customer_id: customerId ? parseInt(customerId, 10) : null,
-      table_id: parseInt(tableId, 10)
-    };
-
-    try {
-      const res = await fetch(`${API_BASE}/customers/order/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || 'Order failed');
+      function blockBack() {
+        history.pushState(null, "", location.href);
+        window.addEventListener("popstate", () => {
+          history.pushState(null, "", location.href);
+        });
       }
-
-      const result = await res.json();
-      localStorage.removeItem('customer_cart');
-      cart = [];
-      Swal.fire({
-        icon: 'success',
-        title: 'Order sent!',
-        text: `Order #${result.order_id || ''} is now pending.`,
-        confirmButtonColor: '#1AC8DB'
-      }).then(() => {
-        window.location.href = '/view/customers/check_customers.html';
-      });
-    } catch (err) {
-      console.error(err);
-      Swal.fire({ icon: 'error', title: 'Cannot send order', text: err.message, confirmButtonColor: '#1AC8DB' });
-    }
-  }
-</script>
-</body>
+    </script>
+  </body>
 </html>

@@ -56,13 +56,53 @@
 
 <script>
   const API_BASE = 'http://localhost:3000';
+  let username = sessionStorage.getItem('username');
+
+  let cartKey = `customer_cart_${username}`;
   let products = [];
-  let cart = (JSON.parse(localStorage.getItem('customer_cart') || '[]'))
+  let cart = (JSON.parse(localStorage.getItem(cartKey) || '[]'))
     .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
 
   document.addEventListener('DOMContentLoaded', () => {
-    fetchProducts();
+    blockBack();
+    (async () => {
+      await syncSession();
+      username = sessionStorage.getItem('username');
+      if (!username) {
+        window.location.href = '/view/customers/Login_customers.html';
+        return;
+      }
+      cartKey = `customer_cart_${username}`;
+      cart = (JSON.parse(localStorage.getItem(cartKey) || '[]'))
+        .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
+      fetchProducts();
+    })();
   });
+
+  async function syncSession() {
+    if (sessionStorage.getItem('username') && sessionStorage.getItem('table')) return;
+    try {
+      const res = await fetch(`${API_BASE}/customers/session`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        sessionStorage.setItem('username', data.username || '');
+        sessionStorage.setItem('table', data.table);
+        sessionStorage.setItem('customer_id', data.customer_id);
+      } else if (res.status === 401) {
+        window.location.href = '/view/customers/Login_customers.html';
+      }
+    } catch (e) {
+      // ignore, จะถูก redirect ตอนสั่งซื้อถ้า 401
+    }
+  }
+
+  // กันกดย้อนกลับ
+  function blockBack() {
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', () => {
+      history.pushState(null, '', location.href);
+    });
+  }
 
   async function fetchProducts(keyword = '') {
     try {
@@ -146,7 +186,7 @@
       }
     }
 
-    localStorage.setItem('customer_cart', JSON.stringify(cart));
+    localStorage.setItem(cartKey, JSON.stringify(cart));
 
     const counter = document.getElementById(`count-${productId}`);
     if (counter) counter.innerText = Math.max(newQty, 0);
