@@ -44,5 +44,22 @@
         </div>
     </div>
 
+    <script>
+        // ถ้าลูกค้ายังล็อกอินไว้ (session ยังอยู่) ให้เด้งตรงไปหน้าเมนู
+        (async () => {
+            try {
+                const res = await fetch("http://localhost:3000/customers/session", { credentials: "include" });
+                if (res.ok) {
+                    const data = await res.json();
+                    sessionStorage.setItem("username", data.username || "");
+                    sessionStorage.setItem("table", data.table);
+                    sessionStorage.setItem("customer_id", data.customer_id);
+                    window.location.href = "/customers/menu";
+                }
+            } catch (err) {
+                // ignore
+            }
+        })();
+    </script>
 </body>
 </html>

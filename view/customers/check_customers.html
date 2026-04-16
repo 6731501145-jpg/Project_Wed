@@ -25,10 +25,10 @@
 
     <div class="flex justify-center mt-6 md:mt-10 px-4">
       <div class="flex bg-base-100 rounded-full p-1.5 gap-1 overflow-x-auto w-full max-w-lg shadow-lg">
-        <a href="/view/customers/Menu_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="'/customers/menu" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           menu
         </a>
-        <a href="/view/customers/capt_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/customers/cart" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           cart
         </a>
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default" style="background-color: #1ac8db">
@@ -58,7 +58,12 @@
         const tableBadge = document.getElementById("tableBadge");
         
         // ดึงเลขโต๊ะจากที่ลูกค้า Login เข้ามา
-        const tableNumber = sessionStorage.getItem("table");
+        let tableNumber = sessionStorage.getItem("table");
+
+        if (!tableNumber) {
+          await syncSession();
+          tableNumber = sessionStorage.getItem("table");
+        }
 
         if (!tableNumber) {
           el.innerHTML = `
@@ -72,9 +77,20 @@
         tableBadge.innerText = `Table ${tableNumber}`;
 
         try {
+          // ถ้า session cookie ยังอยู่แต่ sessionStorage หาย ให้ลอง sync
+          if (!sessionStorage.getItem("username")) {
+            await syncSession();
+          }
           // ส่ง request ไปหา API เช็คสถานะอาหารของโต๊ะนี้
-          const response = await fetch(`http://localhost:3000/customers/orders?table=${tableNumber}`);
+          const response = await fetch(`http://localhost:3000/customers/orders`, {
+            credentials: "include",
+          });
           
+          if (response.status === 401) {
+            window.location.href = '/view/customers/Login_customers.html';
+            return;
+          }
+
           if (response.ok) {
             const orders = await response.json();
 
@@ -115,7 +131,7 @@
               return `
                 <div class="card bg-base-200 rounded-2xl shadow-sm">
                   <div class="card-body flex-row items-center justify-between p-4 md:p-5">
-                    <span class="font-semibold text-sm md:text-base">${o.menu_name}</span>
+                    <span class="font-semibold text-sm md:text-base">${o.menu_name || o.name || ''}</span>
                     <span class="font-bold text-sm ${statusColorClass}">
                       ${statusText}
                     </span>
@@ -136,8 +152,30 @@
         }
       }
 
+      async function syncSession() {
+        try {
+          const res = await fetch(`http://localhost:3000/customers/session`, { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            sessionStorage.setItem("username", data.username || "");
+            sessionStorage.setItem("table", data.table);
+            sessionStorage.setItem("customer_id", data.customer_id);
+          } else if (res.status === 401) {
+            // stay, renderOrders will redirect
+          }
+        } catch (e) {}
+      }
+
+      function blockBack() {
+        history.pushState(null, "", location.href);
+        window.addEventListener("popstate", () => {
+          history.pushState(null, "", location.href);
+        });
+      }
+
       // 1. ให้ฟังก์ชันทำงานทันทีที่โหลดหน้าเว็บเสร็จ
       window.onload = () => {
+        blockBack();
         renderOrders();
         // 2. ดึงข้อมูลใหม่ทุกๆ 5 วินาที (5000 มิลลิวินาที) เพื่อให้ลูกค้าเห็นอัปเดตแบบเรียลไทม์
         setInterval(renderOrders, 5000);
