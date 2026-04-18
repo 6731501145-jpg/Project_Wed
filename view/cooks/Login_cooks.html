@@ -4,114 +4,83 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cook Sign In</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/daisyui@5"
-      rel="stylesheet"
-      type="text/css"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
   <body class="bg-base-100 min-h-screen flex flex-col">
-    <!-- ══ NAVBAR ══ -->
     <div class="navbar bg-base-100 border-b border-base-200 px-4 md:px-10">
       <div class="flex-1 flex items-center gap-2">
         <span class="text-xl">✦</span>
         <span class="font-bold text-base md:text-lg">Food ordering system</span>
       </div>
       <div class="flex-none">
-        <button
-          class="btn btn-outline btn-sm rounded-xl text-sm"
-          onclick="window.location.href = '/public/index.html'"
-        >
+        <button class="btn btn-outline btn-sm rounded-xl text-sm" onclick="window.location.href = '/public/index.html'">
           back to Home
         </button>
       </div>
     </div>
 
-    <!-- ══ CENTERED FORM ══ -->
     <div class="flex flex-1 items-center justify-center px-4 py-12">
       <div class="w-full max-w-md">
-        <h1 class="text-3xl font-bold mb-8">Welcome</h1>
+        <h1 class="text-3xl font-bold mb-8 text-center">Cook Sign In</h1>
 
-        <!-- Name -->
-        <div class="mb-5">
-          <label class="block text-sm font-medium mb-1">Name</label>
-          <input
-            id="name"
-            type="text"
-            placeholder="Enter your name"
-            class="input input-bordered w-full rounded-lg text-sm"
-          />
+        <div class="flex gap-4 mb-5">
+          <div class="w-1/2">
+            <label class="block text-sm font-medium mb-1">First Name</label>
+            <input id="fname" type="text" placeholder="First Name" class="input input-bordered w-full rounded-lg text-sm" />
+          </div>
+          <div class="w-1/2">
+            <label class="block text-sm font-medium mb-1">Last Name</label>
+            <input id="lname" type="text" placeholder="Last Name" class="input input-bordered w-full rounded-lg text-sm" />
+          </div>
         </div>
 
-        <!-- ID -->
         <div class="mb-6">
           <label class="block text-sm font-medium mb-1">Password</label>
-          <input
-            id="empId"
-            type="password"
-            placeholder="Enter your password"
-            class="input input-bordered w-full rounded-lg text-sm"
-          />
+          <input id="password" type="password" placeholder="Enter your password" class="input input-bordered w-full rounded-lg text-sm" />
         </div>
 
-        <!-- Sign up button -->
-        <button
-          onclick="doLogin()"
-          class="btn w-full rounded-lg text-white font-semibold text-base"
-          style="background-color: #1ac8db; border: none"
-        >
-          Sign up
+        <button onclick="doLogin()" class="btn w-full rounded-lg text-white font-semibold text-base mb-4" style="background-color: #1AC8D8; border: none">
+          Sign in
         </button>
-        <div class="divider text-xs text-base-content/40 my-5">Or</div>
 
-        <!-- Link to register -->
-        <p class="text-center text-sm text-base-content/70">
-          Have an account?&nbsp;
-          <a
-            href="register_cook.html"
-            class="font-semibold cursor-pointer"
-            style="color: #1ac8db"
-            >register</a
-          >
+        <p class="text-center text-sm">
+          First time? <a href="/view/cooks/register_cook.html" class="text-info hover:underline">Activate your account here</a>
         </p>
       </div>
     </div>
 
     <script>
       async function doLogin() {
-        const name = document.getElementById("name").value.trim(); 
-        const password = document.getElementById("empId").value.trim(); // ช่องนี้คือ Password
+        const fname = document.getElementById("fname").value.trim();
+        const lname = document.getElementById("lname").value.trim();
+        const password = document.getElementById("password").value;
 
-        if (!name || !password) {
-          Swal.fire({
-            icon: "warning",
-            title: "Incomplete",
-            text: "Please fill in all fields",
-            confirmButtonColor: "#1AC8DB",
-            confirmButtonText: "OK",
-          });
+        if (!fname || !lname || !password) {
+          Swal.fire({ icon: "warning", title: "Incomplete", text: "Please fill in all fields", confirmButtonColor: "#1AC8DB" });
           return;
         }
 
+        // รวมชื่อและนามสกุล เคาะวรรค 1 ที ให้เหมือนกับที่ Admin บันทึกลง Database
+        const fullName = `${fname} ${lname}`;
+
         try {
-          // เชื่อมต่อ Backend
           const response = await fetch('http://localhost:3000/cooks/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name, password: password }),
-            credentials: 'include'
+            body: JSON.stringify({ name: fullName, password: password })
           });
 
           if (response.ok) {
             const redirectPath = await response.text();
             Swal.fire({
               icon: "success",
-              title: `Welcome back!`,
-              text: "Sign in successful",
+              title: `Welcome, ${fname}!`,
+              text: "Login successful",
               confirmButtonColor: "#1AC8DB",
-              confirmButtonText: "Continue",
+              timer: 1500,
+              showConfirmButton: false
             }).then(() => {
               window.location.href = redirectPath;
             });
@@ -120,13 +89,12 @@
             Swal.fire({ icon: 'error', title: 'Login Failed', text: errorText, confirmButtonColor: "#1AC8DB" });
           }
         } catch (error) {
-          console.error(error);
           Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: "#1AC8DB" });
         }
       }
 
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") doLogin();
+        if (e.key === "Enter" && !Swal.isVisible()) doLogin();
       });
     </script>
   </body>

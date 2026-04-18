@@ -106,16 +106,26 @@ app.get('/logout', (req, res) => {
 });
 
 // Register Cook
+// Register Cook (ทำหน้าที่เป็น Activate Account โดยอิงจากข้อมูลที่ Admin สร้างไว้)
 app.post('/cooks/register', async (req, res) => {
     try {
         const { cook_id, name, password } = req.body;
-        const [existing] = await db.query('SELECT * FROM cook WHERE employee_id = ?', [cook_id]);
-        if (existing.length > 0) return res.status(409).send('ID already exists');
+
+        // 1. เช็คก่อนว่า Admin สร้าง ID และชื่อ-นามสกุล นี้ไว้ให้ในระบบหรือยัง?
+        const [existing] = await db.query('SELECT * FROM cook WHERE employee_id = ? AND name = ?', [cook_id, name]);
+
+        // ถ้าไม่เจอ หมายความว่ากรอกผิด หรือ Admin ยังไม่ได้สร้างให้
+        if (existing.length === 0) {
+            return res.status(400).send('ไม่พบข้อมูล หรือชื่อ-นามสกุลไม่ตรงกับที่ Admin สร้างให้');
+        }
+
+        // 2. ถ้าเจอข้อมูลถูกต้อง ให้เอา "รหัสผ่านใหม่" ไปอัปเดต (UPDATE) ทับของเดิม
         const hashedPassword = await bcrypt.hash(password, 10);
         await db.query(
-            'INSERT INTO cook (employee_id, name, password_hash, is_active) VALUES (?, ?, ?, 1)',
-            [cook_id, name, hashedPassword]
+            'UPDATE cook SET password_hash = ? WHERE employee_id = ?',
+            [hashedPassword, cook_id]
         );
+
         res.status(200).send('Registered successfully');
     } catch (error) {
         res.status(500).send('Server error');
