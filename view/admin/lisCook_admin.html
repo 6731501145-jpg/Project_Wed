@@ -74,107 +74,162 @@
 
     <script>
     // ข้อมูลเริ่มต้น
-    var cooks = [
-        { "id": "6731501122", "fname": "Firstname", "sname": "Surname" },
-        { "id": "6731503344", "fname": "Firstname", "sname": "Surname" },
-        { "id": "6731505566", "fname": "Firstname", "sname": "Surname" },
-        { "id": "6731507788", "fname": "Firstname", "sname": "Surname" },
-        { "id": "6731509900", "fname": "Firstname", "sname": "Surname" }
-    ];
+    let cooks = [];
 
-    showCooks();
+// 1. ดึงข้อมูลพ่อครัวทั้งหมด
+async function fetchCooks() {
+    try {
+        const response = await fetch('/admin/cooks/data');
+        if (!response.ok) throw new Error('ไม่สามารถดึงข้อมูลได้');
+        cooks = await response.json();
+        showCooks();
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('ข้อผิดพลาด', 'โหลดข้อมูลไม่สำเร็จ', 'error');
+    }
+}
 
-    function showCooks() {
-        let data = `
-        <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
-            <div class="flex flex-col items-center">
-                <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
-                <span class="text-green-500 font-semibold mt-2">Add New Menu</span>
-            </div>
+// 2. แสดงผลการ์ดพ่อครัว
+function showCooks() {
+    let data = `
+    <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
+        <div class="flex flex-col items-center">
+            <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
+            <span class="text-green-500 font-semibold mt-2">เพิ่มพ่อครัวใหม่</span>
         </div>
-    `;
+    </div>`;
 
-        cooks.forEach(function (cook, index) {
-            data += `
-            <div class="bg-gray-50 p-8 rounded-3xl flex flex-col items-center justify-between text-center border border-transparent hover:border-gray-200 transition-all">
-                <div class="mb-6">
-                    <p class="text-gray-500 font-medium mb-4 text-lg tracking-wide">ID : ${cook.id}</p>
-                    <h3 class="text-2xl font-bold text-gray-800">${cook.fname} ${cook.sname}</h3>
-                </div>
-                <div class="flex gap-4 w-full">
-                    <button onclick="Disable(${index})" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition-colors shadow-sm">Disable</button>
-                    <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors shadow-sm">Edit</button>
+    cooks.forEach(function (cook, index) {
+        const isActive = cook.status === 'active';
+        data += `
+        <div class="bg-gray-50 p-8 rounded-3xl flex flex-col items-center justify-between text-center border border-transparent ${isActive ? 'hover:border-gray-200' : 'opacity-50 grayscale'} transition-all shadow-sm">
+            <div class="mb-6">
+                <p class="text-gray-400 font-medium mb-2 text-sm uppercase tracking-widest">ID: ${cook.id}</p>
+                <h3 class="text-2xl font-bold text-gray-800">${cook.fname} ${cook.lname}</h3>
+                <div class="mt-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold ${isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
+                        ${isActive ? '● กำลังใช้งาน' : '● ปิดใช้งาน'}
+                    </span>
                 </div>
             </div>
-            `;
-        });
-        document.querySelector('#cook_display').innerHTML = data;
-    }
+            <div class="flex gap-4 w-full">
+                <button onclick="toggleCookStatus('${cook.id}', ${isActive ? 0 : 1})" 
+                        class="flex-1 ${isActive ? 'bg-slate-500 hover:bg-slate-600' : 'bg-green-500 hover:bg-green-600'} text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                    ${isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                </button>
+                <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-sm">แก้ไข</button>
+            </div>
+        </div>`;
+    });
+    document.querySelector('#cook_display').innerHTML = data;
+}
 
-    function toggleModal(isOpen) {
-        document.getElementById('cookModal').classList.toggle('hidden', !isOpen);
-    }
+// 3. ฟังก์ชันบันทึกข้อมูลพร้อมเช็คชื่อซ้ำ
+document.getElementById('cookForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const fname = document.getElementById('firstName').value.trim();
+    const lname = document.getElementById('surName').value.trim();
+    const index = document.getElementById('editIndex').value;
 
-    function openAddModal() {
-        document.getElementById('modalTitle').innerText = "Add New Cook";
-        document.getElementById('editIndex').value = "-1";
-        document.getElementById('cookForm').reset();
-        toggleModal(true);
+    // เช็คชื่อซ้ำเบื้องต้นที่หน้าบ้าน (กรณีเพิ่มใหม่)
+    if (index === "-1") {
+        const isDuplicate = cooks.some(c => c.fname.toLowerCase() === fname.toLowerCase() && c.lname.toLowerCase() === lname.toLowerCase());
+        if (isDuplicate) {
+            return Swal.fire('ชื่อซ้ำ!', 'มีพ่อครัวชื่อนี้อยู่ในระบบแล้ว', 'warning');
+        }
     }
-
-    // ระบบ Generate ID และ Save
-    document.getElementById('cookForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const fname = document.getElementById('firstName').value;
-        const sname = document.getElementById('surName').value;
-        const index = document.getElementById('editIndex').value;
-        
+    
+    try {
         if (index === "-1") {
-            // Generate ID ใหม่: 673150 + สุ่ม 4 ตัวท้าย
-            const newId = "673150" + Math.floor(1000 + Math.random() * 9000);
-            cooks.push({ "id": newId, "fname": fname, "sname": sname });
+            // ส่งไปเช็คซ้ำที่หลังบ้านอีกครั้งและบันทึก
+            const res = await fetch('/admin/cooks/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fname, lname })
+            });
+            
+            if (res.status === 400) {
+                const msg = await res.text();
+                return Swal.fire('แจ้งเตือน', msg, 'warning');
+            }
+            if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
+            
         } else {
-            // แก้ไขคนเดิม
-            cooks[index].fname = fname;
-            cooks[index].sname = sname;
+            // แก้ไขข้อมูล
+            const cookId = cooks[index].id;
+            const res = await fetch(`/admin/cooks/${cookId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fname, lname })
+            });
+            if (!res.ok) throw new Error('แก้ไขไม่สำเร็จ');
         }
         
-        showCooks();
         toggleModal(false);
+        fetchCooks();
+        Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาด', error.message, 'error');
+    }
+});
+
+// 4. ฟังก์ชัน เปิด-ปิด สถานะการใช้งาน (แทนการลบ)
+async function toggleCookStatus(id, newStatus) {
+    const actionText = newStatus === 1 ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+    
+    const result = await Swal.fire({
+        title: `ยืนยันการ${actionText}?`,
+        text: `พ่อครัวจะไม่สามารถเข้าระบบได้หากถูกปิดใช้งาน`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: newStatus === 1 ? "#22c55e" : "#64748b",
+        confirmButtonText: `ใช่, ${actionText}`,
+        cancelButtonText: 'ยกเลิก'
     });
 
-    function Edit(index) {
-        const cook = cooks[index];
-        document.getElementById('modalTitle').innerText = "Edit Cook Info";
-        document.getElementById('firstName').value = cook.fname;
-        document.getElementById('surName').value = cook.sname;
-        document.getElementById('editIndex').value = index;
-        toggleModal(true);
-    }
-
-    function Disable(index) {
-        Swal.fire({
-            title: "Disable this cook?",
-            text: "You can re-enable them later.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#ef4444",
-            confirmButtonText: "Yes, disable",
-            borderRadius: '20px'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                cooks.splice(index, 1);
-                showCooks();
+    if (result.isConfirmed) {
+        try {
+            const res = await fetch(`/admin/cooks/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active_status: newStatus })
+            });
+            if (res.ok) {
+                fetchCooks();
+                Swal.fire('เรียบร้อย', `เปลี่ยนสถานะเป็น${actionText}แล้ว`, 'success');
             }
-        });
+        } catch (error) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะได้', 'error');
+        }
     }
+}
 
-    // ปิด Modal เมื่อคลิกข้างนอก
-    window.onclick = function(event) {
-        const modal = document.getElementById('cookModal');
-        if (event.target == modal) toggleModal(false);
-    }
+// ฟังก์ชันเสริมอื่นๆ
+function toggleModal(isOpen) {
+    document.getElementById('cookModal').classList.toggle('hidden', !isOpen);
+}
+
+function openAddModal() {
+    document.getElementById('modalTitle').innerText = "เพิ่มพ่อครัว";
+    document.getElementById('editIndex').value = "-1";
+    document.getElementById('cookForm').reset();
+    toggleModal(true);
+}
+
+function Edit(index) {
+    const cook = cooks[index];
+    document.getElementById('modalTitle').innerText = "แก้ไขข้อมูล";
+    document.getElementById('firstName').value = cook.fname;
+    document.getElementById('surName').value = cook.lname;
+    document.getElementById('editIndex').value = index;
+    toggleModal(true);
+}
+
+window.onclick = (e) => { if (e.target == document.getElementById('cookModal')) toggleModal(false); }
+
+// เรียกใช้งานครั้งแรก
+fetchCooks();
 
     function logout() {
     // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
