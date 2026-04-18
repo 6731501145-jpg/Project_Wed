@@ -103,8 +103,9 @@
                     const data = await response.json();
 
                     if (data.items) {
-                        // 🟢 นำชื่อลูกค้ามาใส่ (ถ้าไม่มีข้อมูลให้ขึ้นว่า 'ลูกค้าทั่วไป')
-                        document.getElementById('customer-name').innerText = data.customerName || 'ลูกค้าทั่วไป';
+                    // 🟢 ใช้ชื่อลูกค้าปัจจุบัน (sessionStorage) ถ้ามี, fallback เป็นค่าจาก server
+                    const currentUsername = sessionStorage.getItem('username');
+                    document.getElementById('customer-name').innerText = currentUsername || data.customerName || 'ลูกค้าทั่วไป';
 
                         if (data.paidAt) {
                             const dateObj = new Date(data.paidAt);

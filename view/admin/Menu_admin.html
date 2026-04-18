@@ -18,20 +18,20 @@
             <span class="text-xl">✦</span>
             <h1 class="text-xl font-bold">Food ordering system</h1>
         </div>
-        <button onclick="window.location.href = '/public/index.html'" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
+        <button onclick="window.location.href = '/logout'" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
             back to login
         </button>
     </header>
 
     <div class="flex justify-center mt-6 md:mt-10 px-4">
       <div class="flex bg-white rounded-full p-1.5 gap-1 overflow-x-auto no-scrollbar w-full max-w-xl shadow-lg border border-gray-100">
-        <a href="/public/admin/Dashdoard_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
+        <a href="/admin/dashboard" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
           Dashboard
         </a>
-        <a href="/public/admin/OrderNow_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
+        <a href="/admin/order/now" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
           Order
         </a>
-        <a href="/public/admin/lisCook_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
+        <a href="/admin/cooks" class="flex-1 min-w-max text-center text-sm font-medium text-gray-400 rounded-full px-5 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
           Cooks
         </a>
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
@@ -72,120 +72,190 @@
     </div>
 
     <script>
-       // 1. ประกาศตัวแปร Data
-var defaultProducts = [
-    { "name": "Pad Thai", "price": 50, "image": "pad-thai.png" },
-    { "name": "Fried Rice", "price": 45, "image": "fried-rice.png" },
-    { "name": "Omelet", "price": 40, "image": "omelet.png" },
-    { "name": "Green Curry", "price": 60, "image": "green-curry.png" },
-    { "name": "Tom Yum Soup", "price": 70, "image": "tom-yum-soup.png" },
-    { "name": "Pad Krapow", "price": 45, "image": "pad-krapow.png" }
-];
+       const API_URL = '/admin/products';
+       let products = [];
 
-var products = [...defaultProducts];
+       document.addEventListener('DOMContentLoaded', loadProducts);
 
-// 2. ฟังก์ชันแสดงผล (แก้ไขลำดับใหม่)
-function showProduct() {
-    let container = document.querySelector('#product_display');
-    if (!container) return;
+       function escapeHtml(value) {
+           return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+               '&': '&amp;',
+               '<': '&lt;',
+               '>': '&gt;',
+               '"': '&quot;',
+               "'": '&#039;'
+           }[char]));
+       }
 
-    // เริ่มต้นตัวแปร data ด้วยปุ่ม "Add New Menu"
-    let data = `
-        <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
-            <div class="flex flex-col items-center">
-                <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
-                <span class="text-green-500 font-semibold mt-2">Add New Menu</span>
-            </div>
-        </div>
-    `;
+       function getImageSrc(image) {
+           if (!image) return '/view/food.png';
+           if (image.startsWith('http') || image.startsWith('/') || image.startsWith('data:')) return image;
+           return `/view/${image}`;
+       }
 
-    // วน Loop เอาเมนูจาก products มาบวกเพิ่มเข้าไปใน data
-    products.forEach(function (product, index) {
-        data += `
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
-            <div>
-                <div class="bg-slate-200 h-44 rounded-2xl flex justify-center items-center mb-5 overflow-hidden">
-                    <img class="w-full h-full object-cover" src="/view/${product.image}" 
-                         onerror="this.src='https://placehold.co/400x300?text=${encodeURIComponent(product.name)}'" alt="${product.name}">
-                </div>
-                <div class="flex justify-between items-center mb-6">
-                    <span class="text-xl font-bold text-gray-800">${product.name}</span>
-                    <span class="text-lg font-black text-gray-900">${product.price} <small class="text-xs text-gray-400">THB</small></span>
-                </div>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="Disable(${index})" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition-colors">Disable</button>
-                <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors">Edit</button>
-            </div>
-        </div>
-        `;
-    });
+       async function requestJson(url, options = {}) {
+           const response = await fetch(url, {
+               headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+               ...options
+           });
 
-    // แสดงผลข้อมูลทั้งหมดที่รวมเสร็จแล้ว
-    container.innerHTML = data;
-}
+           if (!response.ok) {
+               const message = await response.text();
+               throw new Error(message || `Request failed with status ${response.status}`);
+           }
 
-// 3. เรียกทำงานครั้งแรก
-showProduct();
+           const contentType = response.headers.get('content-type') || '';
+           return contentType.includes('application/json') ? response.json() : response.text();
+       }
 
-// --- ฟังก์ชันอื่นๆ (เหมือนเดิม) ---
-function toggleModal(isOpen) {
-    document.getElementById('addMenuModal').classList.toggle('hidden', !isOpen);
-}
+       async function loadProducts() {
+           const container = document.querySelector('#product_display');
+           container.innerHTML = '<p class="col-span-full text-center text-gray-400 py-10">Loading menus...</p>';
 
-function openAddModal() {
-    document.getElementById('modalTitle').innerText = "Add New Item";
-    document.getElementById('editIndex').value = "-1";
-    document.getElementById('menuForm').reset();
-    toggleModal(true);
-}
+           try {
+               products = await requestJson(API_URL);
+               showProduct();
+           } catch (error) {
+               console.error(error);
+               container.innerHTML = '<p class="col-span-full text-center text-red-500 py-10">Cannot load menu data from server.</p>';
+           }
+       }
 
-document.getElementById('menuForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const name = document.getElementById('menuName').value;
-    const price = document.getElementById('menuPrice').value;
-    const index = document.getElementById('editIndex').value;
-    
-    if (index === "-1") {
-        products.unshift({ "name": name, "price": price, "image": "default.png" });
-    } else {
-        products[index].name = name;
-        products[index].price = price;
-    }
-    
-    showProduct();
-    toggleModal(false);
-});
+       function showProduct() {
+           const container = document.querySelector('#product_display');
+           if (!container) return;
 
-function Disable(index) {
-    Swal.fire({
-        title: "Are you sure?",
-        text: "Delete this menu item?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#ef4444",
-        confirmButtonText: "Yes, delete it!"
-    }).then((result) => {
-        if (result.isConfirmed) {
-            products.splice(index, 1);
-            showProduct();
-        }
-    });
-}
+           let data = `
+               <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
+                   <div class="flex flex-col items-center">
+                       <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
+                       <span class="text-green-500 font-semibold mt-2">Add New Menu</span>
+                   </div>
+               </div>
+           `;
 
-function Edit(index) {
-    const product = products[index];
-    document.getElementById('modalTitle').innerText = "Edit Item";
-    document.getElementById('menuName').value = product.name;
-    document.getElementById('menuPrice').value = product.price;
-    document.getElementById('editIndex').value = index;
-    toggleModal(true);
-}
+           products.forEach(function (product, index) {
+               const isActive = Number(product.is_active) === 1;
+               const activeLabel = isActive ? 'Active' : 'Inactive';
+               const toggleLabel = isActive ? 'Disable' : 'Enable';
+               const toggleClass = isActive
+                   ? 'bg-red-500 hover:bg-red-600'
+                   : 'bg-green-500 hover:bg-green-600';
+               const cardClass = isActive ? 'bg-white' : 'bg-gray-50 opacity-70';
+               const name = escapeHtml(product.name);
+               const image = getImageSrc(product.image_url || product.image);
 
-window.onclick = function(event) {
-    const modal = document.getElementById('addMenuModal');
-    if (event.target == modal) toggleModal(false);
-}
+               data += `
+                   <div class="${cardClass} p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                       <div>
+                           <div class="bg-slate-200 h-44 rounded-2xl flex justify-center items-center mb-5 overflow-hidden">
+                               <img class="w-full h-full object-cover" src="${escapeHtml(image)}"
+                                    onerror="this.src='https://placehold.co/400x300?text=${encodeURIComponent(product.name || 'Menu')}'" alt="${name}">
+                           </div>
+                           <div class="flex justify-between items-start gap-4 mb-3">
+                               <span class="text-xl font-bold text-gray-800">${name}</span>
+                               <span class="text-lg font-black text-gray-900 whitespace-nowrap">${Number(product.price).toLocaleString()} <small class="text-xs text-gray-400">THB</small></span>
+                           </div>
+                           <span class="inline-block mb-6 px-3 py-1 rounded-full text-xs font-bold ${isActive ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'}">${activeLabel}</span>
+                       </div>
+                       <div class="flex gap-4">
+                           <button onclick="toggleActive(${index})" class="flex-1 ${toggleClass} text-white py-3 rounded-xl font-bold transition-colors">${toggleLabel}</button>
+                           <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors">Edit</button>
+                       </div>
+                   </div>
+               `;
+           });
+
+           container.innerHTML = data;
+       }
+
+       function toggleModal(isOpen) {
+           document.getElementById('addMenuModal').classList.toggle('hidden', !isOpen);
+       }
+
+       function openAddModal() {
+           document.getElementById('modalTitle').innerText = 'Add New Item';
+           document.getElementById('editIndex').value = '-1';
+           document.getElementById('menuForm').reset();
+           toggleModal(true);
+       }
+
+       document.getElementById('menuForm').addEventListener('submit', async function(e) {
+           e.preventDefault();
+
+           const name = document.getElementById('menuName').value.trim();
+           const price = Number(document.getElementById('menuPrice').value);
+           const index = document.getElementById('editIndex').value;
+
+           if (!name || !price || price <= 0) {
+               Swal.fire('Invalid data', 'Please enter menu name and price correctly.', 'warning');
+               return;
+           }
+
+           try {
+               if (index === '-1') {
+                   await requestJson(API_URL, {
+                       method: 'POST',
+                       body: JSON.stringify({ name, price, image_url: 'food.png' })
+                   });
+               } else {
+                   const product = products[index];
+                   await requestJson(`${API_URL}/${product.menu_id}`, {
+                       method: 'PUT',
+                       body: JSON.stringify({ name, price })
+                   });
+               }
+
+               toggleModal(false);
+               await loadProducts();
+               Swal.fire({ icon: 'success', title: 'Saved', timer: 1200, showConfirmButton: false });
+           } catch (error) {
+               console.error(error);
+               Swal.fire('Save failed', error.message, 'error');
+           }
+       });
+
+       async function toggleActive(index) {
+           const product = products[index];
+           const isActive = Number(product.is_active) === 1;
+           const actionText = isActive ? 'disable' : 'enable';
+
+           const result = await Swal.fire({
+               title: `Are you sure?`,
+               text: `Do you want to ${actionText} this menu item?`,
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: isActive ? '#ef4444' : '#22c55e',
+               confirmButtonText: `Yes, ${actionText} it`
+           });
+
+           if (!result.isConfirmed) return;
+
+           try {
+               await requestJson(`${API_URL}/${product.menu_id}`, {
+                   method: 'PATCH',
+                   body: JSON.stringify({ active_status: isActive ? 0 : 1 })
+               });
+               await loadProducts();
+           } catch (error) {
+               console.error(error);
+               Swal.fire('Update failed', error.message, 'error');
+           }
+       }
+
+       function Edit(index) {
+           const product = products[index];
+           document.getElementById('modalTitle').innerText = 'Edit Item';
+           document.getElementById('menuName').value = product.name;
+           document.getElementById('menuPrice').value = product.price;
+           document.getElementById('editIndex').value = index;
+           toggleModal(true);
+       }
+
+       window.onclick = function(event) {
+           const modal = document.getElementById('addMenuModal');
+           if (event.target == modal) toggleModal(false);
+       }
     </script>
 </body>
 </html>

@@ -72,12 +72,16 @@ app.get('/password/:raw', async (req, res) => {
 // Admin Login
 app.post('/admin/signin', async (req, res) => {
     try {
-        const { admin_username, password } = req.body;
+        const admin_username = req.body.admin_username || req.body.admin_id;
+        const { password } = req.body;
         const [rows] = await db.query('SELECT * FROM admin WHERE username = ?', [admin_username]);
         if (rows.length === 0) return res.status(401).send('Wrong Name');
         const isMatch = await bcrypt.compare(password, rows[0].password_hash);
         if (!isMatch) return res.status(401).send('Wrong Password');
-        res.status(200).send('/public/admin/Dashdoard_admin.html');
+        req.session.user_id = rows[0].admin_id || rows[0].username;
+        req.session.username = rows[0].username;
+        req.session.role = 'admin';
+        res.status(200).send('/admin/dashboard');
     } catch (error) {
         res.status(500).send('Server error');
     }
@@ -742,7 +746,7 @@ app.patch('/admin/cooks/:id', async (req, res) => {
 // --- จัดการเมนู ---
 app.get('/admin/products', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT menu_id, name, price FROM menu_item');
+        const [rows] = await db.query('SELECT menu_id, name, price, image_url, is_active FROM menu_item ORDER BY menu_id DESC');
         res.json(rows);
     } catch (error) { res.status(500).send('Error'); }
 });
@@ -919,8 +923,8 @@ app.get('/cook/orderoper', isAuth, (req, res) => {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
-app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
+app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
+app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
 app.get('/admin/dashboard', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html')); });
 app.get('/admin/order/now', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html')); });
 app.get('/admin/order/history', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderHistory_admin.html')); });
