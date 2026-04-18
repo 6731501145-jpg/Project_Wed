@@ -3,12 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Cook Sign In</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/daisyui@5"
-      rel="stylesheet"
-      type="text/css"
-    />
+    <title>Admin Sign In</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
@@ -35,9 +31,9 @@
         <div class="mb-5">
           <label class="block text-sm font-medium mb-1">Username</label>
           <input
-            id="admin_id"
+            id="admin_username"
             type="text"
-            placeholder="Enter your Admin ID"
+            placeholder="Enter your Admin Username"
             class="input input-bordered w-full rounded-lg text-sm"
           />
         </div>
@@ -65,26 +61,26 @@
 
     <script>
       async function doLogin() {
-        const adminId = document.getElementById("admin_id").value.trim();
+        // เปลี่ยนมารับค่าจาก ID admin_username
+        const adminUsername = document.getElementById("admin_username").value.trim();
         const password = document.getElementById("password").value;
 
-        if (!adminId || !password) {
+        if (!adminUsername || !password) {
           Swal.fire({
             icon: "warning",
             title: "Incomplete",
             text: "Please fill in all fields",
             confirmButtonColor: "#1AC8DB",
-            confirmButtonText: "OK",
           });
           return;
         }
 
         try {
-          // เชื่อมต่อกับ Backend ของเรา
           const response = await fetch('http://localhost:3000/admin/signin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ admin_id: adminId, password: password })
+            // เปลี่ยน key เป็น admin_username ให้ตรงกับที่ API ฝั่ง Backend ต้องการ
+            body: JSON.stringify({ admin_username: adminUsername, password: password })
           });
 
           if (response.ok) {
@@ -94,32 +90,22 @@
               title: `Welcome Admin!`,
               text: "Sign in successful",
               confirmButtonColor: "#1AC8DB",
-              confirmButtonText: "Continue",
+              timer: 1500,
+              showConfirmButton: false
             }).then(() => {
-              window.location.href = redirectPath; // ให้ Backend ชี้ทางไปหน้า Dashboard
+              window.location.href = redirectPath; 
             });
           } else {
             const errorText = await response.text();
-            Swal.fire({ 
-              icon: 'error', 
-              title: 'Login Failed', 
-              text: errorText, 
-              confirmButtonColor: "#1AC8DB" 
-            });
+            Swal.fire({ icon: 'error', title: 'Login Failed', text: errorText, confirmButtonColor: "#1AC8DB" });
           }
         } catch (error) {
           console.error(error);
-          Swal.fire({ 
-            icon: 'error', 
-            title: 'Error', 
-            text: 'Cannot connect to server', 
-            confirmButtonColor: "#1AC8DB" 
-          });
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Cannot connect to server', confirmButtonColor: "#1AC8DB" });
         }
       }
 
       document.addEventListener("keydown", (e) => {
-        // ให้กด Enter ได้เฉพาะตอนที่ไม่มี Popup ของ SweetAlert บังอยู่
         if (e.key === "Enter" && !Swal.isVisible()) doLogin();
       });
     </script>
