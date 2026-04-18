@@ -32,7 +32,7 @@ const db = mysql.createPool({
     user: 'root',
     password: '',
     database: 'database_webdev_course',
-    port: 3306, //3306 is default MySQL port
+    port: 3307, //3306 is default MySQL port
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -75,14 +75,14 @@ app.post('/admin/signin', async (req, res) => {
         const admin_username = req.body.admin_username || req.body.admin_id;
         const { password } = req.body;
         const [rows] = await db.query('SELECT * FROM admin WHERE username = ?', [admin_username]);
+        
         if (rows.length === 0) return res.status(401).send('Wrong Name');
+        
         const isMatch = await bcrypt.compare(password, rows[0].password_hash);
         if (!isMatch) return res.status(401).send('Wrong Password');
-        req.session.user_id = rows[0].admin_id || rows[0].username;
-        req.session.username = rows[0].username;
-        req.session.role = 'admin';
-        res.status(200).send('/admin/dashboard');
+        res.status(200).send('/public/admin/Dashdoard_admin.html');
     } catch (error) {
+        console.error(error);
         res.status(500).send('Server error');
     }
 });
@@ -373,8 +373,10 @@ app.post('/customers/login', async (req, res) => {
             [table_number]
         );
 
-        req.session.customer_id = result.insertId;
+        req.session.user_id = result.insertId; 
+        req.session.username = username;
         req.session.table_id = table_number;
+        req.session.role = 'customer';
 
         res.send('/customers/menu');
 
@@ -647,6 +649,7 @@ app.get('/api/receipt/:tableId', ensureCustomerSession, async (req, res) => {
             paidAt: paidAt,
             customerName: realCustomerName // 🟢 เปลี่ยนตรงนี้ให้ใช้ตัวแปรชื่อลูกค้าจริง
         });
+        res.clearCookie('connect.sid', { path: '/' });
 
     } catch (error) {
         console.error("Receipt Error:", error);
@@ -891,13 +894,35 @@ app.get('/api/admin/order/history', async (req, res) => {
 });
 
 // --- โหลดหน้า HTML ---
+//Customer
+const isAuthcustomer = (req, res, next) => {
+    // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+    // 2. เช็คว่ามี Session หรือไม่
+    if (req.session.role == 'customer') {
+        return next(); // ถ้ามี ให้ไปต่อได้
+    } else {
+        // 3. ถ้าไม่มี ให้ดีดกลับไปหน้า Login ทันที
+        return res.redirect('/');
+    }
+};
 app.use(express.static(path.join(__dirname, 'view')));
-app.get('/customers/menu', isCustomerAuth, (req, res) => {
+app.get('/customers/menu', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
 });
-app.get('/customers/cart', isCustomerAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'view', 'customers', 'cart_customers.html'));
+app.get('/customers/cart', isAuthcustomer, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'capt_customers.html'));
 });
+
+app.get('/customer/OpenOrder',isAuthcustomer, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'check_customers.html'));
+});
+app.get('/customer/peyment',isAuthcustomer, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'PAYMENT.html'));
+})
+//Cook
+
 app.get('/api/review/', (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'REVIEW.html')); });
 // ฟังก์ชันเช็คสิทธิ์แบบละเอียด
 const isAuth = (req, res, next) => {
@@ -905,7 +930,7 @@ const isAuth = (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
     // 2. เช็คว่ามี Session หรือไม่
-    if (req.session.user_id) {
+    if (req.session.role == 'cook') {
         return next(); // ถ้ามี ให้ไปต่อได้
     } else {
         // 3. ถ้าไม่มี ให้ดีดกลับไปหน้า Login ทันที
@@ -921,10 +946,17 @@ app.get('/cook/orderoper', isAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'cooks', 'Order_cook.html'));
 });
 app.get('/', (req, res) => {
+    if (req.session.role === 'admin') {
+        return res.redirect('/admin/dashboard');
+    } else if (req.session.role === 'cook') {
+        return res.redirect('/cook/dashboard');
+    } else if (req.session.role === 'customer') {
+        return res.redirect('/customers/menu');
+    }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
-app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
+app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
+app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
 app.get('/admin/dashboard', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html')); });
 app.get('/admin/order/now', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html')); });
 app.get('/admin/order/history', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderHistory_admin.html')); });

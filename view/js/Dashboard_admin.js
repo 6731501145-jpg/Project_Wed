@@ -424,3 +424,8 @@ document.addEventListener('click', function (e) {
 document.addEventListener('DOMContentLoaded', () => {
     selectToday();
 });
+
+function logout() {
+    // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
+    window.location.href = '/logout';
+}

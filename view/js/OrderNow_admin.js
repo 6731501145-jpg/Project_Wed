@@ -58,3 +58,8 @@ function renderOrderNow(orders) {
         tbody.appendChild(tr);
     });
 }
+
+function logout() {
+    // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
+    window.location.href = '/logout';
+}

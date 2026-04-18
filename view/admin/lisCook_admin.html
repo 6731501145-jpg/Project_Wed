@@ -19,23 +19,23 @@
       <span class="text-xl">✦</span>
       <h1 class="text-xl font-bold">Food ordering system</h1>
     </div>
-        <button onclick="window.location.href = '/public/index.html'" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
+        <button onclick="logout()" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
             back to login
         </button>
     </header>
 
     <div class="flex justify-center mt-6 md:mt-10 px-4">
       <div class="flex bg-white rounded-full p-1.5 gap-1 overflow-x-auto no-scrollbar w-full max-w-xl shadow-lg border border-gray-100">
-        <a href="/public/admin/Dashdoard_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/admin/dashboard" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           Dashboard
         </a>
-        <a href="/public/admin/OrderNow_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/admin/order/now" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           Order
         </a>
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default"
           style="background-color: #1ac8db">Cook
         </span>
-        <a href="/public/admin/Menu_admin.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/admin/menu" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           Menu
         </a>
       </div>
@@ -175,6 +175,11 @@
         const modal = document.getElementById('cookModal');
         if (event.target == modal) toggleModal(false);
     }
+
+    function logout() {
+    // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
+    window.location.href = '/logout';
+}
     </script>
 </body>
 </html>
