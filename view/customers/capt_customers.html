@@ -133,10 +133,10 @@
         (async () => {
           await syncSession();
           username = sessionStorage.getItem("username");
-          if (!username) {
-            window.location.href = "/view/customers/Login_customers.html";
-            return;
-          }
+          // if (!username) {
+          //   window.location.href = "/view/customers/Login_customers.html";
+          //   return;
+          // }
           cartKey = `customer_cart_${username}`;
           cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
           renderCart();
@@ -152,9 +152,10 @@
             sessionStorage.setItem("username", data.username || "");
             sessionStorage.setItem("table", data.table);
             sessionStorage.setItem("customer_id", data.customer_id);
-          } else if (res.status === 401) {
-            window.location.href = "/view/customers/Login_customers.html";
-          }
+           }
+          //  else if (res.status === 401) {
+          //   window.location.href = "/view/customers/Login_customers.html";
+          // }
         } catch (e) {}
       }
 
@@ -281,17 +282,17 @@
             body: JSON.stringify(payload),
           });
 
-          if (res.status === 401) {
-            Swal.fire({
-              icon: "error",
-              title: "Session expired",
-              text: "Please login again.",
-              confirmButtonColor: "#1AC8DB",
-            }).then(() => {
-              window.location.href = "/view/customers/Login_customers.html";
-            });
-            return;
-          }
+          // if (res.status === 401) {
+          //   Swal.fire({
+          //     icon: "error",
+          //     title: "Session expired",
+          //     text: "Please login again.",
+          //     confirmButtonColor: "#1AC8DB",
+          //   }).then(() => {
+          //     window.location.href = "/view/customers/Login_customers.html";
+          //   });
+          //   return;
+          // }
 
           if (!res.ok) {
             const msg = await res.text();

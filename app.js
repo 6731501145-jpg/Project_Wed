@@ -950,7 +950,7 @@ app.use(express.static(path.join(__dirname, 'view')));
 app.get('/customers/menu', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
 });
-app.get('/customers/cart',isAuthcustomer, (req, res) => {
+app.get('/customers/cart', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'capt_customers.html'));
 });
 
