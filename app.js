@@ -32,7 +32,7 @@ const db = mysql.createPool({
     user: 'root',
     password: '',
     database: 'database_webdev_course',
-    port: 3307, //3306 is default MySQL port
+    port: 3306, //3306 is default MySQL port
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -712,38 +712,71 @@ app.post('/api/review', ensureCustomerSession, async (req, res) => {
 // ==========================================
 
 // --- จัดการกุ๊ก ---
+// 1. ดึงข้อมูลพ่อครัว
 app.get('/admin/cooks/data', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT employee_id, name, is_active FROM cook');
-        res.json(rows.map(c => ({ id: c.employee_id, fname: c.name.split(' ')[0], lname: c.name.split(' ')[1] || '', status: c.is_active ? 'active' : 'inactive' })));
-    } catch (error) { res.status(500).send('Error'); }
+        res.json(rows.map(c => {
+            const nameParts = c.name.split(' ');
+            return { 
+                id: c.employee_id, 
+                fname: nameParts[0] || '', 
+                lname: nameParts.slice(1).join(' ') || '', // กรณีมีนามสกุลหลายคำ
+                status: c.is_active ? 'active' : 'inactive' 
+            };
+        }));
+    } catch (error) { 
+        res.status(500).send('Error'); 
+    }
 });
 
+// 2. เพิ่มพ่อครัว (เช็คชื่อซ้ำ)
 app.post('/admin/cooks/add', async (req, res) => {
     const { fname, lname } = req.body;
     const fullName = `${fname.trim()} ${lname.trim()}`;
     try {
-        const [existing] = await db.query('SELECT id FROM cook WHERE name = ? LIMIT 1', [fullName]);
-        if (existing.length > 0) return res.status(400).send('มีพ่อครัวชื่อนี้อยู่ในระบบแล้ว');
-        await db.query('INSERT INTO cook (employee_id, name, password_hash, is_active) VALUES (?, ?, "hash", 1)', ['EMP' + Date.now(), fullName]);
+        // เช็คว่ามีชื่อ-นามสกุลนี้อยู่แล้วหรือไม่ (ใช้ column name ในการเช็ค)
+        const [existing] = await db.query('SELECT employee_id FROM cook WHERE name = ? LIMIT 1', [fullName]);
+        if (existing.length > 0) {
+            return res.status(400).send('มีพ่อครัวชื่อนี้อยู่ในระบบแล้ว');
+        }
+
+        const empId = 'EMP' + Date.now();
+        await db.query('INSERT INTO cook (employee_id, name, password_hash, is_active) VALUES (?, ?, "hash", 1)', [empId, fullName]);
         res.status(200).send('เพิ่มเรียบร้อย');
-    } catch (error) { res.status(500).send('Error'); }
+    } catch (error) { 
+        console.error(error);
+        res.status(500).send('Error'); 
+    }
 });
 
+// 3. แก้ไขชื่อพ่อครัว (ปรับให้รับทั้ง fname และ lname)
 app.put('/admin/cooks/:id', async (req, res) => {
+    const { fname, lname } = req.body;
+    const fullName = `${fname.trim()} ${lname.trim()}`;
     try {
-        const [curr] = await db.query('SELECT name FROM cook WHERE employee_id = ?', [req.params.id]);
-        const lname = curr[0].name.split(' ')[1] || '';
-        await db.query('UPDATE cook SET name = ? WHERE employee_id = ?', [`${req.body.fname} ${lname}`, req.params.id]);
+        // ตรวจสอบชื่อซ้ำ (ยกเว้น ID ของตัวเอง) เพื่อไม่ให้แก้ไปซ้ำกับคนอื่น
+        const [duplicate] = await db.query('SELECT employee_id FROM cook WHERE name = ? AND employee_id != ?', [fullName, req.params.id]);
+        if (duplicate.length > 0) {
+            return res.status(400).send('ชื่อนี้ถูกใช้โดยพ่อครัวคนอื่นแล้ว');
+        }
+
+        await db.query('UPDATE cook SET name = ? WHERE employee_id = ?', [fullName, req.params.id]);
         res.send('Updated');
-    } catch (error) { res.status(500).send('Error'); }
+    } catch (error) { 
+        res.status(500).send('Error'); 
+    }
 });
 
+// 4. เปลี่ยนสถานะ เปิด/ปิด การใช้งาน (ไม่ต้องแก้ เยอะ แต่เช็คค่าที่ส่งมา)
 app.patch('/admin/cooks/:id', async (req, res) => {
     try {
-        await db.query('UPDATE cook SET is_active = ? WHERE employee_id = ?', [req.body.active_status, req.params.id]);
+        const { active_status } = req.body; // รับค่า 0 หรือ 1
+        await db.query('UPDATE cook SET is_active = ? WHERE employee_id = ?', [active_status, req.params.id]);
         res.status(200).send('Status updated');
-    } catch (error) { res.status(500).send('Error'); }
+    } catch (error) { 
+        res.status(500).send('Error'); 
+    }
 });
 
 // --- จัดการเมนู ---
@@ -955,11 +988,24 @@ app.get('/', (req, res) => {
     }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/admin/cooks', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
-app.get('/admin/menu', isAuth, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
-app.get('/admin/dashboard', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html')); });
-app.get('/admin/order/now', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html')); });
-app.get('/admin/order/history', isAuth, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderHistory_admin.html')); });
+//Admin
+const isAuthadmin = (req, res, next) => {
+    // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+    // 2. เช็คว่ามี Session หรือไม่
+    if (req.session.role == 'admin') {
+        return next(); // ถ้ามี ให้ไปต่อได้
+    } else {
+        // 3. ถ้าไม่มี ให้ดีดกลับไปหน้า Login ทันที
+        return res.redirect('/');
+    }
+};
+app.get('/admin/cooks', isAuthadmin,(req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
+app.get('/admin/menu', isAuthadmin, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
+app.get('/admin/dashboard', isAuthadmin, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html')); });
+app.get('/admin/order/now', isAuthadmin, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html')); });
+app.get('/admin/order/history', isAuthadmin, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderHistory_admin.html')); });
 
 //start server
 app.listen(3000, () => console.log('🚀 Server running on http://localhost:3000'));
