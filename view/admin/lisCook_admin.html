@@ -73,119 +73,107 @@
     </div>
 
     <script>
-    // ข้อมูลเริ่มต้น
-    let cooks = [];
+   // Global variable to store cook data
+let cooks = [];
 
-// 1. ดึงข้อมูลพ่อครัวทั้งหมด
+// 1. Fetch data from database on page load
 async function fetchCooks() {
     try {
         const response = await fetch('/admin/cooks/data');
-        if (!response.ok) throw new Error('ไม่สามารถดึงข้อมูลได้');
+        if (!response.ok) throw new Error('Unable to fetch data');
         cooks = await response.json();
         showCooks();
     } catch (error) {
         console.error('Error:', error);
-        Swal.fire('ข้อผิดพลาด', 'โหลดข้อมูลไม่สำเร็จ', 'error');
+        Swal.fire('Error', 'Failed to load cook data', 'error');
     }
 }
 
-// 2. แสดงผลการ์ดพ่อครัว
+// 2. Function to render data on the UI
 function showCooks() {
+    // Initialize with the "Add New Cook" card
     let data = `
     <div onclick="openAddModal()" class="cursor-pointer border-2 border-green-400 border-dashed rounded-3xl flex items-center justify-center min-h-[320px] bg-white hover:bg-green-50 transition-all group shadow-sm">
         <div class="flex flex-col items-center">
             <span class="text-8xl text-green-400 font-thin group-hover:scale-110 transition-transform">+</span>
-            <span class="text-green-500 font-semibold mt-2">เพิ่มพ่อครัวใหม่</span>
+            <span class="text-green-500 font-semibold mt-2">Add New Cook</span>
         </div>
     </div>`;
 
     cooks.forEach(function (cook, index) {
         const isActive = cook.status === 'active';
         data += `
-        <div class="bg-gray-50 p-8 rounded-3xl flex flex-col items-center justify-between text-center border border-transparent ${isActive ? 'hover:border-gray-200' : 'opacity-50 grayscale'} transition-all shadow-sm">
+        <div class="bg-gray-50 p-8 rounded-3xl flex flex-col items-center justify-between text-center border border-transparent ${isActive ? 'hover:border-gray-200' : 'opacity-60'} transition-all shadow-sm">
             <div class="mb-6">
-                <p class="text-gray-400 font-medium mb-2 text-sm uppercase tracking-widest">ID: ${cook.id}</p>
+                <p class="text-gray-500 font-medium mb-4 text-lg tracking-wide">ID : ${cook.id}</p>
                 <h3 class="text-2xl font-bold text-gray-800">${cook.fname} ${cook.lname}</h3>
-                <div class="mt-2">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold ${isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
-                        ${isActive ? '● กำลังใช้งาน' : '● ปิดใช้งาน'}
-                    </span>
-                </div>
+                <span class="text-xs font-bold uppercase ${isActive ? 'text-green-500' : 'text-red-400'}">
+                    Status: ${isActive ? 'Active' : 'Suspended'}
+                </span>
             </div>
             <div class="flex gap-4 w-full">
-                <button onclick="toggleCookStatus('${cook.id}', ${isActive ? 0 : 1})" 
-                        class="flex-1 ${isActive ? 'bg-slate-500 hover:bg-slate-600' : 'bg-green-500 hover:bg-green-600'} text-white py-3 rounded-xl font-bold transition-all shadow-sm">
-                    ${isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                <button onclick="ToggleStatus('${cook.id}', ${isActive ? 0 : 1})" 
+                        class="flex-1 ${isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white py-3 rounded-xl font-bold transition-colors shadow-sm">
+                    ${isActive ? 'Suspend' : 'Activate'}
                 </button>
-                <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-sm">แก้ไข</button>
+                <button onclick="Edit(${index})" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors shadow-sm">Edit</button>
             </div>
         </div>`;
     });
     document.querySelector('#cook_display').innerHTML = data;
 }
 
-// 3. ฟังก์ชันบันทึกข้อมูลพร้อมเช็คชื่อซ้ำ
+// 3. Save Data Function (Handles both Create and Update)
 document.getElementById('cookForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const fname = document.getElementById('firstName').value.trim();
-    const lname = document.getElementById('surName').value.trim();
+    const fname = document.getElementById('firstName').value;
+    const lname = document.getElementById('surName').value;
     const index = document.getElementById('editIndex').value;
-
-    // เช็คชื่อซ้ำเบื้องต้นที่หน้าบ้าน (กรณีเพิ่มใหม่)
-    if (index === "-1") {
-        const isDuplicate = cooks.some(c => c.fname.toLowerCase() === fname.toLowerCase() && c.lname.toLowerCase() === lname.toLowerCase());
-        if (isDuplicate) {
-            return Swal.fire('ชื่อซ้ำ!', 'มีพ่อครัวชื่อนี้อยู่ในระบบแล้ว', 'warning');
-        }
-    }
     
     try {
         if (index === "-1") {
-            // ส่งไปเช็คซ้ำที่หลังบ้านอีกครั้งและบันทึก
+            // Create New Cook (POST)
             const res = await fetch('/admin/cooks/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fname, lname })
             });
-            
-            if (res.status === 400) {
-                const msg = await res.text();
-                return Swal.fire('แจ้งเตือน', msg, 'warning');
+            if (!res.ok) {
+                const errorMsg = await res.text();
+                throw new Error(errorMsg);
             }
-            if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
-            
         } else {
-            // แก้ไขข้อมูล
+            // Update Existing Cook (PUT)
             const cookId = cooks[index].id;
             const res = await fetch(`/admin/cooks/${cookId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fname, lname })
             });
-            if (!res.ok) throw new Error('แก้ไขไม่สำเร็จ');
+            if (!res.ok) throw new Error('Failed to update data');
         }
         
         toggleModal(false);
-        fetchCooks();
-        Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+        fetchCooks(); // Refresh data from DB
+        Swal.fire('Success', 'Data saved successfully', 'success');
     } catch (error) {
-        Swal.fire('ข้อผิดพลาด', error.message, 'error');
+        Swal.fire('Error', error.message, 'error');
     }
 });
 
-// 4. ฟังก์ชัน เปิด-ปิด สถานะการใช้งาน (แทนการลบ)
-async function toggleCookStatus(id, newStatus) {
-    const actionText = newStatus === 1 ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+// 4. Toggle Cook Status (PATCH)
+async function ToggleStatus(id, newStatus) {
+    const statusText = newStatus === 0 ? "Suspend" : "Activate";
     
     const result = await Swal.fire({
-        title: `ยืนยันการ${actionText}?`,
-        text: `พ่อครัวจะไม่สามารถเข้าระบบได้หากถูกปิดใช้งาน`,
-        icon: "question",
+        title: `Are you sure?`,
+        text: `Do you want to ${statusText} this cook?`,
+        icon: "warning",
         showCancelButton: true,
-        confirmButtonColor: newStatus === 1 ? "#22c55e" : "#64748b",
-        confirmButtonText: `ใช่, ${actionText}`,
-        cancelButtonText: 'ยกเลิก'
+        confirmButtonColor: newStatus === 0 ? "#ef4444" : "#22c55e",
+        confirmButtonText: "Confirm",
+        cancelButtonText: "Cancel"
     });
 
     if (result.isConfirmed) {
@@ -196,22 +184,23 @@ async function toggleCookStatus(id, newStatus) {
                 body: JSON.stringify({ active_status: newStatus })
             });
             if (res.ok) {
-                fetchCooks();
-                Swal.fire('เรียบร้อย', `เปลี่ยนสถานะเป็น${actionText}แล้ว`, 'success');
+                fetchCooks(); // Refresh data
+                Swal.fire('Success', `Status changed to ${statusText}`, 'success');
             }
         } catch (error) {
-            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะได้', 'error');
+            Swal.fire('Error', 'Unable to change status', 'error');
         }
     }
 }
 
-// ฟังก์ชันเสริมอื่นๆ
+// --- Modal Controls ---
+
 function toggleModal(isOpen) {
     document.getElementById('cookModal').classList.toggle('hidden', !isOpen);
 }
 
 function openAddModal() {
-    document.getElementById('modalTitle').innerText = "เพิ่มพ่อครัว";
+    document.getElementById('modalTitle').innerText = "Add Cook Information";
     document.getElementById('editIndex').value = "-1";
     document.getElementById('cookForm').reset();
     toggleModal(true);
@@ -219,16 +208,20 @@ function openAddModal() {
 
 function Edit(index) {
     const cook = cooks[index];
-    document.getElementById('modalTitle').innerText = "แก้ไขข้อมูล";
+    document.getElementById('modalTitle').innerText = "Edit Cook Information";
     document.getElementById('firstName').value = cook.fname;
     document.getElementById('surName').value = cook.lname;
     document.getElementById('editIndex').value = index;
     toggleModal(true);
 }
 
-window.onclick = (e) => { if (e.target == document.getElementById('cookModal')) toggleModal(false); }
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('cookModal');
+    if (event.target == modal) toggleModal(false);
+}
 
-// เรียกใช้งานครั้งแรก
+// Initial fetch on page load
 fetchCooks();
 
     function logout() {

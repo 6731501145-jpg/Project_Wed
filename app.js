@@ -714,7 +714,7 @@ app.post('/api/review', ensureCustomerSession, async (req, res) => {
 // ==========================================
 
 // --- จัดการกุ๊ก ---
-// 1. ดึงข้อมูลพ่อครัว
+// 1. Fetch Cook Data
 app.get('/admin/cooks/data', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT employee_id, name, is_active FROM cook');
@@ -723,64 +723,68 @@ app.get('/admin/cooks/data', async (req, res) => {
             return { 
                 id: c.employee_id, 
                 fname: nameParts[0] || '', 
-                lname: nameParts.slice(1).join(' ') || '', // กรณีมีนามสกุลหลายคำ
+                // Handle cases where there might be multiple middle/last names
+                lname: nameParts.slice(1).join(' ') || '', 
                 status: c.is_active ? 'active' : 'inactive' 
             };
         }));
     } catch (error) { 
-        res.status(500).send('Error'); 
+        console.error('Fetch Error:', error);
+        res.status(500).send('Internal Server Error'); 
     }
 });
 
-// 2. เพิ่มพ่อครัว (เช็คชื่อซ้ำ)
+// 2. Add New Cook (With Duplicate Name Check)
 app.post('/admin/cooks/add', async (req, res) => {
     const { fname, lname } = req.body;
     const fullName = `${fname.trim()} ${lname.trim()}`;
     try {
-        // เช็คว่ามีชื่อ-นามสกุลนี้อยู่แล้วหรือไม่ (ใช้ column name ในการเช็ค)
+        // Check if the full name already exists in the system
         const [existing] = await db.query('SELECT employee_id FROM cook WHERE name = ? LIMIT 1', [fullName]);
         if (existing.length > 0) {
-            return res.status(400).send('มีพ่อครัวชื่อนี้อยู่ในระบบแล้ว');
+            return res.status(400).send('This cook name is already registered in the system.');
         }
 
         const empId = 'EMP' + Date.now();
+        // Insert new cook with default password and active status (1)
         await db.query('INSERT INTO cook (employee_id, name, password_hash, is_active) VALUES (?, ?, "hash", 1)', [empId, fullName]);
-        res.status(200).send('เพิ่มเรียบร้อย');
+        res.status(200).send('Cook added successfully');
     } catch (error) { 
-        console.error(error);
-        res.status(500).send('Error'); 
+        console.error('Insert Error:', error);
+        res.status(500).send('Internal Server Error'); 
     }
 });
 
-// 3. แก้ไขชื่อพ่อครัว (ปรับให้รับทั้ง fname และ lname)
+// 3. Update Cook Name (With Duplicate Check)
 app.put('/admin/cooks/:id', async (req, res) => {
     const { fname, lname } = req.body;
     const fullName = `${fname.trim()} ${lname.trim()}`;
     try {
-        // ตรวจสอบชื่อซ้ำ (ยกเว้น ID ของตัวเอง) เพื่อไม่ให้แก้ไปซ้ำกับคนอื่น
+        // Ensure the new name isn't already used by another employee (excluding current ID)
         const [duplicate] = await db.query('SELECT employee_id FROM cook WHERE name = ? AND employee_id != ?', [fullName, req.params.id]);
         if (duplicate.length > 0) {
-            return res.status(400).send('ชื่อนี้ถูกใช้โดยพ่อครัวคนอื่นแล้ว');
+            return res.status(400).send('This name is already in use by another cook.');
         }
 
         await db.query('UPDATE cook SET name = ? WHERE employee_id = ?', [fullName, req.params.id]);
-        res.send('Updated');
+        res.status(200).send('Update successful');
     } catch (error) { 
-        res.status(500).send('Error'); 
+        console.error('Update Error:', error);
+        res.status(500).send('Internal Server Error'); 
     }
 });
 
-// 4. เปลี่ยนสถานะ เปิด/ปิด การใช้งาน (ไม่ต้องแก้ เยอะ แต่เช็คค่าที่ส่งมา)
+// 4. Toggle Active Status (Enable/Disable)
 app.patch('/admin/cooks/:id', async (req, res) => {
     try {
-        const { active_status } = req.body; // รับค่า 0 หรือ 1
+        const { active_status } = req.body; // Expects 0 (Inactive) or 1 (Active)
         await db.query('UPDATE cook SET is_active = ? WHERE employee_id = ?', [active_status, req.params.id]);
-        res.status(200).send('Status updated');
+        res.status(200).send('Status updated successfully');
     } catch (error) { 
-        res.status(500).send('Error'); 
+        console.error('Patch Status Error:', error);
+        res.status(500).send('Internal Server Error'); 
     }
 });
-
 // --- จัดการเมนู ---
 app.get('/admin/products', async (req, res) => {
     try {
@@ -946,7 +950,7 @@ app.use(express.static(path.join(__dirname, 'view')));
 app.get('/customers/menu', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
 });
-app.get('/customers/cart', isAuthcustomer, (req, res) => {
+app.get('/customers/cart',isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'capt_customers.html'));
 });
 
@@ -1003,7 +1007,7 @@ const isAuthadmin = (req, res, next) => {
         return res.redirect('/');
     }
 };
-app.get('/admin/cooks', isAuthadmin,(req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
+app.get('/admin/cooks', isAuthadmin, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'lisCook_admin.html')));
 app.get('/admin/menu', isAuthadmin, (req, res) => res.sendFile(path.join(__dirname, 'view', 'admin', 'Menu_admin.html')));
 app.get('/admin/dashboard', isAuthadmin, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'Dashdoard_admin.html')); });
 app.get('/admin/order/now', isAuthadmin, (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'admin', 'OrderNow_admin.html')); });
