@@ -908,9 +908,9 @@ app.get('/customers/menu', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
 });
 app.get('/customers/cart', isAuthcustomer, (req, res) => {
-    res.sendFile(path.join(__dirname, 'view', 'customers', 'cart_customers.html'));
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'capt_customers.html'));
 });
-<<<<<<< HEAD
+
 app.get('/customer/OpenOrder',isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'check_customers.html'));
 });
@@ -918,9 +918,8 @@ app.get('/customer/peyment',isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'PAYMENT.html'));
 })
 //Cook
-=======
+
 app.get('/api/review/', (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'REVIEW.html')); });
->>>>>>> c51d27a6fe02f7594abd5247f2aa939d63284394
 // ฟังก์ชันเช็คสิทธิ์แบบละเอียด
 const isAuth = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
