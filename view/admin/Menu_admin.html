@@ -18,7 +18,7 @@
             <span class="text-xl">✦</span>
             <h1 class="text-xl font-bold">Food ordering system</h1>
         </div>
-        <button onclick="window.location.href = '/public/index.html'" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
+        <button onclick="logout()" class="border border-gray-300 bg-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all">
             back to login
         </button>
     </header>
@@ -255,6 +255,10 @@
 window.onclick = function(event) {
     const modal = document.getElementById('addMenuModal');
     if (event.target == modal) toggleModal(false);
+}
+ function logout() {
+    // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
+    window.location.href = '/logout';
 }
     </script>
 </body>

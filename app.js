@@ -80,7 +80,9 @@ app.post('/admin/signin', async (req, res) => {
         
         const isMatch = await bcrypt.compare(password, rows[0].password_hash);
         if (!isMatch) return res.status(401).send('Wrong Password');
-        res.status(200).send('/public/admin/Dashdoard_admin.html');
+        req.session.role = 'admin';
+        res.status(200).send('/admin/dashboard');
+
     } catch (error) {
         console.error(error);
         res.status(500).send('Server error');
