@@ -86,10 +86,10 @@
             credentials: "include",
           });
           
-          if (response.status === 401) {
-            window.location.href = '/view/customers/Login_customers.html';
-            return;
-          }
+          // if (response.status === 401) {
+          //   window.location.href = '/view/customers/Login_customers.html';
+          //   return;
+          // }
 
           if (response.ok) {
             const orders = await response.json();
