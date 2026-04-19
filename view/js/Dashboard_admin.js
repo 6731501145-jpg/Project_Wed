@@ -217,6 +217,30 @@ function isDateMatch(dbDate) {
     return false;
 }
 
+function escapeAttr(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function getImageSrc(imageUrl) {
+    if (!imageUrl) return '/view/food.png';
+    if (imageUrl.startsWith('http') || imageUrl.startsWith('/') || imageUrl.startsWith('data:')) {
+        return imageUrl;
+    }
+    return `/view/${imageUrl}`;
+}
+
+function renderMenuImage(imageUrl, sizeClass = 'w-10 h-10') {
+    return `<img src="${escapeAttr(getImageSrc(imageUrl))}" alt="menu image"
+                class="${sizeClass} object-cover rounded-xl"
+                onerror="this.src='/view/food.png'" />`;
+}
+
 function renderRankingPreview(rankingData) {
     const container = document.getElementById('dashboard-ranking-preview');
     container.innerHTML = '';
@@ -231,7 +255,7 @@ function renderRankingPreview(rankingData) {
         const html = `
                             <div class="bg-white p-3 md:p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-gray-50">
                                 <div class="w-10 h-10 rounded-full ${badgeClass} border flex items-center justify-center font-bold text-lg shrink-0">${index + 1}</div>
-                                <div class="text-2xl">${item.image}</div>
+                                <div class="shrink-0">${renderMenuImage(item.image, 'w-10 h-10')}</div>
                                 <div class="flex-1 overflow-hidden">
                                     <h4 class="font-bold text-gray-800 text-sm md:text-base truncate">${item.name}</h4>
                                 </div>
@@ -295,7 +319,7 @@ function renderRankingPage() {
         const html = `
                             <div class="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 md:gap-6 hover:shadow-md transition-shadow">
                                 ${rankBadge}
-                                <div class="text-4xl md:text-5xl bg-gray-50 rounded-xl p-2 md:p-3">${item.image}</div>
+                                <div class="bg-gray-50 rounded-xl p-2 md:p-3 shrink-0">${renderMenuImage(item.image, 'w-10 h-10 md:w-12 md:h-12')}</div>
                                 <div class="flex-1">
                                     <h3 class="text-lg md:text-2xl font-bold text-gray-800">${item.name}</h3>
                                     <p class="text-gray-500 text-sm md:text-base mt-1">Total ordered</p>

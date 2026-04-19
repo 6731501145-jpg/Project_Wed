@@ -36,7 +36,7 @@
         <a href="/customer/OpenOrder" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           check
         </a>
-        <a href="/customer/peyment" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+        <a href="/customer/payment" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
         style="background-color: #1ac8db">
           payment
         </a>
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    window.location.href = 'REVIEW.html'; 
+                    window.location.replace('/customers/review');
                 } else {
                     alert(data.message || 'Payment failed');
                     resetPayButton(this);
@@ -228,5 +228,6 @@ function blockBack() {
     });
 }
     </script>
+    <script src="/js/no-back.js"></script>
 </body>
 </html>

@@ -24,6 +24,26 @@ const ensureCustomerSession = (req, res, next) => {
     }
     next();
 };
+
+const ensureRole = (role) => (req, res, next) => {
+    if (req.session.role === role) {
+        return next();
+    }
+    return res.status(401).send('Unauthorized');
+};
+
+const ensureAdmin = ensureRole('admin');
+const ensureCook = ensureRole('cook');
+
+const ensureReviewCompleted = (req, res, next) => {
+    if (req.session.review_completed) {
+        return next();
+    }
+    if (req.session.review_required) {
+        return res.redirect('/customers/review');
+    }
+    return res.redirect('/customer/payment');
+};
 // =========================================================
 // 🗄️ 1. DATABASE CONNECTION
 // =========================================================
@@ -134,13 +154,17 @@ app.post('/cooks/register', async (req, res) => {
 // Cook Login
 app.post('/cooks/login', async (req, res) => {
     const { name, password } = req.body;
-    const sql = "SELECT employee_id, name, password_hash FROM cook WHERE name = ?";
+    const sql = "SELECT employee_id, name, password_hash, is_active FROM cook WHERE name = ?";
 
     try {
         const [results] = await db.query(sql, [name]);
 
         if (results.length !== 1) {
             return res.status(401).send('Wrong Name');
+        }
+
+        if (Number(results[0].is_active) !== 1) {
+            return res.status(403).send('This cook account is suspended');
         }
 
         const isMatch = await bcrypt.compare(password, results[0].password_hash);
@@ -184,7 +208,7 @@ app.get('/user/info', (req, res) => {
 });
 
 // ดึงรายการออเดอร์ทั้งหมดที่ยังไม่เสร็จ (พร้อมจัดกลุ่มรายการอาหาร)
-app.get('/cook/orders', async (req, res) => {
+app.get('/cook/orders', ensureCook, async (req, res) => {
     try {
         const { status } = req.query; // รับค่า 'pending' จาก Query String
 
@@ -230,7 +254,7 @@ app.get('/cook/orders', async (req, res) => {
 });
 
 // ดูรายละเอียดออเดอร์เดี่ยว
-app.get('/cook/order/:id', async (req, res) => {
+app.get('/cook/order/:id', ensureCook, async (req, res) => {
     try {
         const { id } = req.params;
         const sql = `
@@ -256,7 +280,7 @@ app.get('/cook/order/:id', async (req, res) => {
 });
 
 // อัปเดตสถานะออเดอร์
-app.patch('/cook/order/:id/status', async (req, res) => {
+app.patch('/cook/order/:id/status', ensureCook, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const validStatus = ['pending', 'cooking', 'serving'];
@@ -270,7 +294,7 @@ app.patch('/cook/order/:id/status', async (req, res) => {
 });
 
 // ออเดอร์ที่เสิร์ฟแล้ววันนี้ dashboard
-app.get('/api/cook/order/today', async (req, res) => {
+app.get('/api/cook/order/today', ensureCook, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT COUNT(oi.order_item_id) as total_qty 
@@ -285,7 +309,7 @@ app.get('/api/cook/order/today', async (req, res) => {
 });
 
 // top-menu dashboard
-app.get('/api/cook/top-menus/today', async (req, res) => {
+app.get('/api/cook/top-menus/today', ensureCook, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT m.menu_id as id, m.name, m.image_url as image, COUNT(oi.order_item_id) as total_qty
@@ -303,7 +327,7 @@ app.get('/api/cook/top-menus/today', async (req, res) => {
 });
 
 // reviewa dashboard
-app.get('/api/cook/review/today', async (req, res) => {
+app.get('/api/cook/review/today', ensureCook, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT r.review_id as id, c.username as customer_name, r.rating, r.comment, r.created_at as date
@@ -484,7 +508,7 @@ app.post('/customers/order/submit', ensureCustomerSession, async (req, res) => {
         }
 
         const [orderResult] = await connection.query(
-            "INSERT INTO `order` (customer_id, table_id, total_price, status) VALUES (?, ?, ?, 'pending')",
+            "INSERT INTO `order` (customer_id, table_id, total_price, status, order_time) VALUES (?, ?, ?, 'pending', NOW())",
             [customer_id, table_id, totalPrice]
         );
 
@@ -496,7 +520,7 @@ app.post('/customers/order/submit', ensureCustomerSession, async (req, res) => {
             const qty = parseInt(item.qty, 10);
             for (let i = 0; i < qty; i++) {
                 await connection.query(
-                    "INSERT INTO order_item (order_id, menu_id, price) VALUES (?, ?, ?)",
+                    "INSERT INTO order_item (order_id, menu_id, price, is_confirmed) VALUES (?, ?, ?, 1)",
                     [newOrderId, item.id, menu.price]
                 );
             }
@@ -566,8 +590,6 @@ app.post('/api/pay', ensureCustomerSession, async (req, res) => {
             return res.status(400).json({ success: false, message: "ไม่มีออเดอร์" });
         }
 
-        const orderIds = orders.map(o => o.order_id);
-
         // 🟢 วนลูปเพื่ออัปเดต/สร้าง payment (บันทึก total_price)
         for (const ord of orders) {
             const amount = ord.total_price || 0;
@@ -587,8 +609,8 @@ app.post('/api/pay', ensureCustomerSession, async (req, res) => {
 
         // 🔥 update customer
         await db.execute(
-            'UPDATE customer SET is_paid = 1 WHERE table_id = ?',
-            [sessionTableId]
+            'UPDATE customer SET is_paid = 1 WHERE customer_id = ?',
+            [req.session.customer_id]
         );
 
         // 🔥 เคลียร์โต๊ะ
@@ -596,6 +618,9 @@ app.post('/api/pay', ensureCustomerSession, async (req, res) => {
             'UPDATE `table` SET status = "available" WHERE table_id = ?',
             [sessionTableId]
         );
+
+        req.session.review_required = true;
+        req.session.review_completed = false;
 
         res.json({ success: true });
 
@@ -614,42 +639,41 @@ app.get('/api/receipt/:tableId', ensureCustomerSession, async (req, res) => {
         if (parseInt(tableId, 10) !== parseInt(req.session.table_id, 10)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
+        if (!req.session.review_completed) {
+            return res.status(403).json({ error: 'Review required before receipt' });
+        }
 
-        // 1. หา payment ล่าสุดของโต๊ะนี้
-        const [latestPayment] = await db.execute(`
-            SELECT p.payment_id, p.paid_at 
+        const [payments] = await db.execute(`
+            SELECT p.payment_id, p.paid_at
             FROM \`order\` o
             JOIN \`payment\` p ON o.order_id = p.order_id
             WHERE o.table_id = ? AND p.status = 'completed' AND o.customer_id = ?
-            ORDER BY p.paid_at DESC, p.payment_id DESC 
-            LIMIT 1
+            ORDER BY p.paid_at DESC, p.payment_id DESC
         `, [tableId, req.session.customer_id]);
 
-        if (latestPayment.length === 0) {
+        if (payments.length === 0) {
             return res.status(404).json({ message: "ไม่พบข้อมูลใบเสร็จ" });
         }
 
-        const paidAt = latestPayment[0].paid_at;
-        const paymentId = latestPayment[0].payment_id;
+        const paidAt = payments[0].paid_at;
 
-        // 2. ดึงรายการอาหารทั้งหมดที่จ่ายพร้อมกัน
+        // 2. ดึงรายการอาหารทั้งหมดที่ลูกค้าคนนี้จ่ายในรอบ checkout นี้
         const [items] = await db.execute(`
-            SELECT m.name AS menuName, m.price, COUNT(oi.order_item_id) AS amount 
+            SELECT m.name AS menuName, m.price, COUNT(oi.order_item_id) AS amount
             FROM order_item oi
             JOIN menu_item m ON oi.menu_id = m.menu_id
             JOIN \`order\` o ON oi.order_id = o.order_id
             JOIN \`payment\` p ON o.order_id = p.order_id
-            WHERE o.table_id = ? AND o.customer_id = ? AND p.status = 'completed' AND p.payment_id = ?
+            WHERE o.table_id = ? AND o.customer_id = ? AND p.status = 'completed'
             GROUP BY m.menu_id, m.name, m.price
-        `, [tableId, req.session.customer_id, paymentId]);
+        `, [tableId, req.session.customer_id]);
 
         const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.amount)), 0);
 
         // 🟢 3. ดึงชื่อลูกค้าจริงจากตาราง customer
-        // (สมมติว่าคอลัมน์ชื่อลูกค้าในฐานข้อมูลของคุณชื่อ 'username' ถ้าเป็นชื่ออื่นเช่น 'name' ให้แก้ตรงนี้นะครับ)
         const [customer] = await db.execute(`
-            SELECT username FROM customer WHERE table_id = ? LIMIT 1
-        `, [tableId]);
+            SELECT username FROM customer WHERE customer_id = ? LIMIT 1
+        `, [req.session.customer_id]);
 
         let realCustomerName = 'ลูกค้าทั่วไป';
         if (customer.length > 0 && customer[0].username) {
@@ -663,7 +687,6 @@ app.get('/api/receipt/:tableId', ensureCustomerSession, async (req, res) => {
             paidAt: paidAt,
             customerName: realCustomerName // 🟢 เปลี่ยนตรงนี้ให้ใช้ตัวแปรชื่อลูกค้าจริง
         });
-        res.clearCookie('connect.sid', { path: '/' });
 
     } catch (error) {
         console.error("Receipt Error:", error);
@@ -675,10 +698,11 @@ app.get('/api/receipt/:tableId', ensureCustomerSession, async (req, res) => {
 app.post('/api/review', ensureCustomerSession, async (req, res) => {
     const { rating, comment } = req.body;
     const tableId = req.session.table_id;
+    const commentText = String(comment || '').trim();
 
     // ตรวจสอบข้อมูลขั้นต่ำ — ตาม spec: 400 text 'Missing rating or tableId'
-    if (!tableId || !rating) {
-        return res.status(400).send('Missing rating or tableId');
+    if (!tableId || !rating || !commentText) {
+        return res.status(400).send('Missing rating, comment or tableId');
     }
 
     const ratingNum = parseInt(rating);
@@ -708,8 +732,11 @@ app.post('/api/review', ensureCustomerSession, async (req, res) => {
         // 3. บันทึก review ลงฐานข้อมูล
         await db.query(
             'INSERT INTO review (payment_id, customer_id, rating, comment, created_at) VALUES (?, ?, ?, ?, NOW())',
-            [payment_id, customer_id, ratingNum, comment || '']
+            [payment_id, customer_id, ratingNum, commentText]
         );
+
+        req.session.review_required = false;
+        req.session.review_completed = true;
 
         // ✅ ตาม spec: 200 JSON {"success": true}
         res.status(200).json({ success: true });
@@ -727,7 +754,7 @@ app.post('/api/review', ensureCustomerSession, async (req, res) => {
 
 // --- จัดการกุ๊ก ---
 // 1. Fetch Cook Data
-app.get('/admin/cooks/data', async (req, res) => {
+app.get('/admin/cooks/data', ensureAdmin, async (req, res) => {
     try {
         const [rows] = await db.query('SELECT employee_id, name, is_active FROM cook');
         res.json(rows.map(c => {
@@ -747,7 +774,7 @@ app.get('/admin/cooks/data', async (req, res) => {
 });
 
 // 2. Add New Cook (With Duplicate Name Check)
-app.post('/admin/cooks/add', async (req, res) => {
+app.post('/admin/cooks/add', ensureAdmin, async (req, res) => {
     const { fname, lname } = req.body;
     const fullName = `${fname.trim()} ${lname.trim()}`;
     try {
@@ -768,7 +795,7 @@ app.post('/admin/cooks/add', async (req, res) => {
 });
 
 // 3. Update Cook Name (With Duplicate Check)
-app.put('/admin/cooks/:id', async (req, res) => {
+app.put('/admin/cooks/:id', ensureAdmin, async (req, res) => {
     const { fname, lname } = req.body;
     const fullName = `${fname.trim()} ${lname.trim()}`;
     try {
@@ -787,7 +814,7 @@ app.put('/admin/cooks/:id', async (req, res) => {
 });
 
 // 4. Toggle Active Status (Enable/Disable)
-app.patch('/admin/cooks/:id', async (req, res) => {
+app.patch('/admin/cooks/:id', ensureAdmin, async (req, res) => {
     try {
         const { active_status } = req.body; // Expects 0 (Inactive) or 1 (Active)
         await db.query('UPDATE cook SET is_active = ? WHERE employee_id = ?', [active_status, req.params.id]);
@@ -798,14 +825,14 @@ app.patch('/admin/cooks/:id', async (req, res) => {
     }
 });
 // --- จัดการเมนู ---
-app.get('/admin/products', async (req, res) => {
+app.get('/admin/products', ensureAdmin, async (req, res) => {
     try {
         const [rows] = await db.query('SELECT menu_id, name, price, image_url, is_active FROM menu_item ORDER BY menu_id DESC');
         res.json(rows);
     } catch (error) { res.status(500).send('Error'); }
 });
 
-app.post('/admin/products', async (req, res) => {
+app.post('/admin/products', ensureAdmin, async (req, res) => {
     const { name, price, image_url } = req.body;
     try {
         const [existing] = await db.query('SELECT menu_id FROM menu_item WHERE name = ? LIMIT 1', [name.trim()]);
@@ -815,14 +842,14 @@ app.post('/admin/products', async (req, res) => {
     } catch (error) { res.status(500).send('Error'); }
 });
 
-app.put('/admin/products/:id', async (req, res) => {
+app.put('/admin/products/:id', ensureAdmin, async (req, res) => {
     try {
         await db.query('UPDATE menu_item SET name = ?, price = ? WHERE menu_id = ?', [req.body.name, req.body.price, req.params.id]);
         res.send('Updated');
     } catch (error) { res.status(500).send('Error'); }
 });
 
-app.patch('/admin/products/:id', async (req, res) => {
+app.patch('/admin/products/:id', ensureAdmin, async (req, res) => {
     try {
         await db.query('UPDATE menu_item SET is_active = ? WHERE menu_id = ?', [req.body.active_status, req.params.id]);
         res.status(200).send('Status updated');
@@ -830,7 +857,7 @@ app.patch('/admin/products/:id', async (req, res) => {
 });
 
 // --- dashboard ---
-app.get('/api/admin/summary', async (req, res) => {
+app.get('/api/admin/summary', ensureAdmin, async (req, res) => {
     const { start, end } = req.query;
 
     if (!start || !end) {
@@ -852,7 +879,7 @@ app.get('/api/admin/summary', async (req, res) => {
     }
 });
 
-app.get('/api/admin/top-menus', async (req, res) => {
+app.get('/api/admin/top-menus', ensureAdmin, async (req, res) => {
     const { start, end } = req.query;
 
     if (!start || !end) {
@@ -875,7 +902,7 @@ app.get('/api/admin/top-menus', async (req, res) => {
     }
 });
 
-app.get('/api/admin/reviews', async (req, res) => {
+app.get('/api/admin/reviews', ensureAdmin, async (req, res) => {
     const { start, end } = req.query;
 
     if (!start || !end) {
@@ -896,11 +923,11 @@ app.get('/api/admin/reviews', async (req, res) => {
     }
 });
 
-app.get('/api/admin/order/now', async (req, res) => {
+app.get('/api/admin/order/now', ensureAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT 
-                m.name as menu_names,
+                GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as menu_names,
                 o.order_time as time,
                 t.table_number as table_num,
                 o.status
@@ -910,8 +937,9 @@ app.get('/api/admin/order/now', async (req, res) => {
             JOIN \`table\` t ON o.table_id = t.table_id
             JOIN customer c ON o.customer_id = c.customer_id
             LEFT JOIN payment p ON o.order_id = p.order_id
-            WHERE c.is_paid = 0 
+            WHERE c.is_paid = 0
               AND (p.status IS NULL OR p.status != 'completed')
+            GROUP BY o.order_id, o.order_time, t.table_number, o.status
             ORDER BY o.order_time DESC
         `);
         res.status(200).json(rows);
@@ -920,7 +948,7 @@ app.get('/api/admin/order/now', async (req, res) => {
     }
 });
 
-app.get('/api/admin/order/history', async (req, res) => {
+app.get('/api/admin/order/history', ensureAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT 
@@ -1004,10 +1032,27 @@ app.get('/customers/cart', isAuthcustomer, (req, res) => {
 app.get('/customer/OpenOrder',isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'check_customers.html'));
 });
-app.get('/customer/peyment',isAuthcustomer, (req, res) => {
+app.get('/customer/payment', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'PAYMENT.html'));
-})
-app.get('/api/review/', (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'REVIEW.html')); });
+});
+app.get('/customer/peyment', isAuthcustomer, (req, res) => {
+    res.redirect('/customer/payment');
+});
+app.get('/customers/review', isAuthcustomer, (req, res) => {
+    if (req.session.review_completed) {
+        return res.redirect('/customers/history');
+    }
+    if (!req.session.review_required) {
+        return res.redirect('/customer/payment');
+    }
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'REVIEW.html'));
+});
+app.get('/customers/history', isAuthcustomer, ensureReviewCompleted, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'history2.html'));
+});
+app.get('/api/review/', isAuthcustomer, (req, res) => {
+    res.redirect('/customers/review');
+});
 
 //Cook
 const isAuthcook = (req, res, next) => {
