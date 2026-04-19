@@ -914,16 +914,6 @@ app.post('/api/menu', ensureAdmin, async (req, res) => {
     }
 });
 
-app.post('/admin/products', ensureAdmin, async (req, res) => {
-    const { name, price, image_url } = req.body;
-    try {
-        const [existing] = await db.query('SELECT menu_id FROM menu_item WHERE name = ? LIMIT 1', [name.trim()]);
-        if (existing.length > 0) return res.status(400).send('ชื่อสินค้าซ้ำ');
-        await db.query('INSERT INTO menu_item (name, price, image_url, is_active) VALUES (?, ?, ?, 1)', [name.trim(), price, image_url]);
-        res.status(201).send('Added');
-    } catch (error) { res.status(500).send('Error'); }
-});
-
 app.put('/admin/products/:id', ensureAdmin, async (req, res) => {
     try {
         await db.query('UPDATE menu_item SET name = ?, price = ? WHERE menu_id = ?', [req.body.name, req.body.price, req.params.id]);
@@ -1032,6 +1022,16 @@ app.get('/api/admin/order/now', ensureAdmin, async (req, res) => {
 
 app.get('/api/admin/order/history', ensureAdmin, async (req, res) => {
     try {
+        const { start, end } = req.query;
+
+        let dateFilter = '';
+        const params = [];
+
+        if (start && end) {
+            dateFilter = 'AND o.order_time BETWEEN ? AND ?';
+            params.push(start, end);
+        }
+
         const [rows] = await db.query(`
             SELECT 
                 GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as menu_names,
@@ -1043,11 +1043,11 @@ app.get('/api/admin/order/history', ensureAdmin, async (req, res) => {
             JOIN menu_item m ON oi.menu_id = m.menu_id
             JOIN customer c ON o.customer_id = c.customer_id
             LEFT JOIN payment p ON o.order_id = p.order_id
-            WHERE c.is_paid = 1 
-               OR p.status = 'completed'
+            WHERE (c.is_paid = 1 OR p.status = 'completed')
+            ${dateFilter}
             GROUP BY o.order_id
             ORDER BY o.order_time DESC
-        `);
+        `, params);
         res.status(200).json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
