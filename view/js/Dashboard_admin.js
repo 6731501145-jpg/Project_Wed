@@ -2,7 +2,7 @@ async function fetchAndRenderDashboard() {
     let start = new Date(selectedDateContext);
     let end = new Date(selectedDateContext);
 
-    if (currentFilterType === 'today') {
+    if (currentFilterType === 'today' || currentFilterType === 'day') {
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
     } else if (currentFilterType === 'month') {
@@ -62,6 +62,7 @@ async function fetchAndRenderDashboard() {
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_NAMES = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 let currentFilterType = 'today';
 let selectedDateContext = new Date();
@@ -71,13 +72,15 @@ const _today = new Date();
 let monthYear = _today.getFullYear();
 let weekViewMonth = _today.getMonth();
 let weekViewYear = _today.getFullYear();
+let dayViewMonth = _today.getMonth();
+let dayViewYear = _today.getFullYear();
 
 let currentRankingData = [];
 let currentRankingPage = 1;
 const RANKING_ITEMS_PER_PAGE = 10;
 
 function closeAll() {
-    ['main-menu', 'week-picker', 'month-picker'].forEach(id => document.getElementById(id).classList.remove('open'));
+    ['main-menu', 'day-picker', 'week-picker', 'month-picker'].forEach(id => document.getElementById(id).classList.remove('open'));
 }
 
 function toggleMain() {
@@ -89,7 +92,10 @@ function toggleMain() {
 
 function openSub(type) {
     closeAll();
-    if (type === 'week') {
+    if (type === 'day') {
+        renderDayGrid();
+        document.getElementById('day-picker').classList.add('open');
+    } else if (type === 'week') {
         renderWeekGrid();
         document.getElementById('week-picker').classList.add('open');
     } else if (type === 'month') {
@@ -98,6 +104,85 @@ function openSub(type) {
     } else {
         document.getElementById('main-menu').classList.add('open');
     }
+}
+
+function changeDayView(delta) {
+    dayViewMonth += delta;
+    if (dayViewMonth < 0) { dayViewMonth = 11; dayViewYear--; }
+    else if (dayViewMonth > 11) { dayViewMonth = 0; dayViewYear++; }
+    renderDayGrid();
+}
+
+function changeDayYearView(delta) {
+    dayViewYear += delta;
+    renderDayGrid();
+}
+
+function renderDayGrid() {
+    document.getElementById('day-view-label').textContent = `${MONTH_NAMES[dayViewMonth]} ${dayViewYear}`;
+    const grid = document.getElementById('day-grid');
+    grid.innerHTML = '';
+
+    // Day headers (Mon-Sun)
+    DAY_NAMES.forEach(name => {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = name;
+        grid.appendChild(header);
+    });
+
+    // First day of month
+    const firstDay = new Date(dayViewYear, dayViewMonth, 1);
+    let startDay = firstDay.getDay(); // 0=Sun, 1=Mon...
+    startDay = startDay === 0 ? 6 : startDay - 1; // Convert to Mon=0
+
+    // Days in month
+    const daysInMonth = new Date(dayViewYear, dayViewMonth + 1, 0).getDate();
+
+    // Today reference
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+    // Empty cells before first day
+    for (let i = 0; i < startDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell empty';
+        grid.appendChild(cell);
+    }
+
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        cell.textContent = d;
+
+        const cellDateStr = `${dayViewYear}-${dayViewMonth}-${d}`;
+
+        // Highlight today
+        if (cellDateStr === todayStr) {
+            cell.classList.add('today');
+        }
+
+        // Highlight selected day
+        if (currentFilterType === 'day' &&
+            selectedDateContext.getFullYear() === dayViewYear &&
+            selectedDateContext.getMonth() === dayViewMonth &&
+            selectedDateContext.getDate() === d) {
+            cell.classList.add('selected');
+        }
+
+        cell.onclick = () => selectDay(dayViewYear, dayViewMonth, d);
+        grid.appendChild(cell);
+    }
+}
+
+function selectDay(year, month, day) {
+    currentFilterType = 'day';
+    selectedDateContext = new Date(year, month, day);
+    const d = selectedDateContext;
+    document.getElementById('dropdown-label').textContent = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+    closeAll();
+    fetchAndRenderDashboard();
 }
 
 function selectToday() {
