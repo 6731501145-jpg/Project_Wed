@@ -950,6 +950,16 @@ app.get('/api/admin/order/now', ensureAdmin, async (req, res) => {
 
 app.get('/api/admin/order/history', ensureAdmin, async (req, res) => {
     try {
+        const { start, end } = req.query;
+
+        let dateFilter = '';
+        const params = [];
+
+        if (start && end) {
+            dateFilter = 'AND o.order_time BETWEEN ? AND ?';
+            params.push(start, end);
+        }
+
         const [rows] = await db.query(`
             SELECT 
                 GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as menu_names,
@@ -961,11 +971,11 @@ app.get('/api/admin/order/history', ensureAdmin, async (req, res) => {
             JOIN menu_item m ON oi.menu_id = m.menu_id
             JOIN customer c ON o.customer_id = c.customer_id
             LEFT JOIN payment p ON o.order_id = p.order_id
-            WHERE c.is_paid = 1 
-               OR p.status = 'completed'
+            WHERE (c.is_paid = 1 OR p.status = 'completed')
+            ${dateFilter}
             GROUP BY o.order_id
             ORDER BY o.order_time DESC
-        `);
+        `, params);
         res.status(200).json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
