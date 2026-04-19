@@ -1,7 +1,9 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcrypt');
+const multer = require('multer');
 const app = express();
 const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
@@ -9,6 +11,33 @@ const MemoryStore = require('memorystore')(session);
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/view', express.static(path.join(__dirname, 'view')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+
+const menuUploadDir = path.join(__dirname, 'public', 'uploads', 'menu');
+fs.mkdirSync(menuUploadDir, { recursive: true });
+
+const allowedImageExtensions = new Set(['.jpg', '.jpeg', '.png']);
+const allowedImageMimeTypes = new Set(['image/jpeg', 'image/png']);
+
+const menuImageStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, menuUploadDir),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${Date.now()}${ext}`);
+    }
+});
+
+const uploadMenuImage = multer({
+    storage: menuImageStorage,
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!allowedImageExtensions.has(ext) || !allowedImageMimeTypes.has(file.mimetype)) {
+            return cb(new Error('Only jpg, jpeg, and png files are allowed'));
+        }
+        cb(null, true);
+    }
+});
 // mi
 const isCustomerAuth = (req, res, next) => {
     if (req.session.customer_id) {
@@ -830,6 +859,59 @@ app.get('/admin/products', ensureAdmin, async (req, res) => {
         const [rows] = await db.query('SELECT menu_id, name, price, image_url, is_active FROM menu_item ORDER BY menu_id DESC');
         res.json(rows);
     } catch (error) { res.status(500).send('Error'); }
+});
+
+app.post('/api/upload', ensureAdmin, (req, res) => {
+    uploadMenuImage.single('image')(req, res, (error) => {
+        if (error) {
+            const message = error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE'
+                ? 'File size must not exceed 2MB'
+                : error.message;
+            return res.status(400).json({ error: message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'Image file is required' });
+        }
+
+        res.status(200).json({
+            imageUrl: `/uploads/menu/${req.file.filename}`
+        });
+    });
+});
+
+app.post('/api/menu', ensureAdmin, async (req, res) => {
+    const { name, price, image_url } = req.body;
+    const numericPrice = Number(price);
+
+    if (!name || !numericPrice || numericPrice <= 0 || !image_url) {
+        return res.status(400).json({ error: 'name, price, and image_url are required' });
+    }
+
+    if (!image_url.startsWith('/uploads/menu/')) {
+        return res.status(400).json({ error: 'image_url must come from uploaded file' });
+    }
+
+    try {
+        const [existing] = await db.query('SELECT menu_id FROM menu_item WHERE name = ? LIMIT 1', [name.trim()]);
+        if (existing.length > 0) return res.status(400).json({ error: 'ชื่อสินค้าซ้ำ' });
+
+        const [result] = await db.query(
+            'INSERT INTO menu_item (name, price, image_url, is_active) VALUES (?, ?, ?, 1)',
+            [name.trim(), numericPrice, image_url]
+        );
+
+        res.status(201).json({
+            menu_id: result.insertId,
+            name: name.trim(),
+            price: numericPrice,
+            image_url,
+            is_active: 1
+        });
+    } catch (error) {
+        console.error('POST /api/menu error:', error);
+        res.status(500).json({ error: 'Error' });
+    }
 });
 
 app.post('/admin/products', ensureAdmin, async (req, res) => {

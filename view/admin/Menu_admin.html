@@ -61,6 +61,12 @@
                         <label class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Price (baht)</label>
                         <input type="number" id="menuPrice" required placeholder="0.00" class="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-400 outline-none">
                     </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Menu Image</label>
+                        <input type="file" id="menuImage" accept="image/*" class="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-400 outline-none">
+                        <img id="preview" style="width:100px; display:none;" class="mt-4 rounded-xl object-cover" alt="Menu image preview">
+                        <p id="uploadStatus" class="mt-2 text-sm text-gray-400"></p>
+                    </div>
                 </div>
 
                 <div class="flex gap-4 pt-4">
@@ -74,6 +80,7 @@
     <script>
        const API_URL = '/admin/products';
        let products = [];
+       let uploadedImageUrl = '';
 
        document.addEventListener('DOMContentLoaded', loadProducts);
 
@@ -89,6 +96,7 @@
 
        function getImageSrc(image) {
            if (!image) return '/view/food.png';
+           if (image.startsWith('/uploads/')) return `${window.location.origin}${image}`;
            if (image.startsWith('http') || image.startsWith('/') || image.startsWith('data:')) return image;
            return `/view/${image}`;
        }
@@ -107,6 +115,65 @@
            const contentType = response.headers.get('content-type') || '';
            return contentType.includes('application/json') ? response.json() : response.text();
        }
+
+       document.getElementById('menuImage').addEventListener('change', async function(e) {
+           const file = e.target.files[0];
+           const preview = document.getElementById('preview');
+           const uploadStatus = document.getElementById('uploadStatus');
+
+           uploadedImageUrl = '';
+           preview.style.display = 'none';
+           preview.removeAttribute('src');
+
+           if (!file) {
+               uploadStatus.innerText = '';
+               return;
+           }
+
+           const allowedTypes = ['image/jpeg', 'image/png'];
+           if (!allowedTypes.includes(file.type)) {
+               this.value = '';
+               uploadStatus.innerText = '';
+               Swal.fire('Invalid file', 'Only jpg, jpeg, and png files are allowed.', 'warning');
+               return;
+           }
+
+           if (file.size > 2 * 1024 * 1024) {
+               this.value = '';
+               uploadStatus.innerText = '';
+               Swal.fire('File too large', 'Image file must not exceed 2MB.', 'warning');
+               return;
+           }
+
+           const formData = new FormData();
+           formData.append('image', file);
+           uploadStatus.innerText = 'Uploading image...';
+
+           try {
+               const response = await fetch('/api/upload', {
+                   method: 'POST',
+                   body: formData
+               });
+
+               const contentType = response.headers.get('content-type') || '';
+               const result = contentType.includes('application/json')
+                   ? await response.json()
+                   : { error: await response.text() };
+               if (!response.ok) {
+                   throw new Error(result.error || 'Upload failed');
+               }
+
+               uploadedImageUrl = result.imageUrl;
+               preview.src = `${window.location.origin}${uploadedImageUrl}`;
+               preview.style.display = 'block';
+               uploadStatus.innerText = 'Image uploaded';
+           } catch (error) {
+               console.error(error);
+               this.value = '';
+               uploadStatus.innerText = '';
+               Swal.fire('Upload failed', error.message, 'error');
+           }
+       });
 
        async function loadProducts() {
            const container = document.querySelector('#product_display');
@@ -177,6 +244,12 @@
            document.getElementById('modalTitle').innerText = 'Add New Item';
            document.getElementById('editIndex').value = '-1';
            document.getElementById('menuForm').reset();
+           uploadedImageUrl = '';
+           document.getElementById('preview').style.display = 'none';
+           document.getElementById('preview').removeAttribute('src');
+           document.getElementById('menuImage').disabled = false;
+           document.getElementById('menuImage').required = true;
+           document.getElementById('uploadStatus').innerText = '';
            toggleModal(true);
        }
 
@@ -194,9 +267,14 @@
 
            try {
                if (index === '-1') {
-                   await requestJson(API_URL, {
+                   if (!uploadedImageUrl) {
+                       Swal.fire('Image required', 'Please select and upload a menu image first.', 'warning');
+                       return;
+                   }
+
+                   await requestJson('/api/menu', {
                        method: 'POST',
-                       body: JSON.stringify({ name, price, image_url: 'food.png' })
+                       body: JSON.stringify({ name, price, image_url: uploadedImageUrl })
                    });
                } else {
                    const product = products[index];
@@ -249,6 +327,14 @@
            document.getElementById('menuName').value = product.name;
            document.getElementById('menuPrice').value = product.price;
            document.getElementById('editIndex').value = index;
+           uploadedImageUrl = product.image_url || '';
+           document.getElementById('menuImage').value = '';
+           document.getElementById('menuImage').disabled = true;
+           document.getElementById('menuImage').required = false;
+           document.getElementById('uploadStatus').innerText = 'Image upload is used when adding a new menu item.';
+           const preview = document.getElementById('preview');
+           preview.src = getImageSrc(product.image_url || product.image);
+           preview.style.display = 'block';
            toggleModal(true);
        }
 
