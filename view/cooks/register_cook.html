@@ -57,7 +57,7 @@
         </button>
         
         <p class="text-center text-sm">
-          Already activated? <a href="/view/cooks/Login_cooks.html" class="text-info hover:underline">Sign in here</a>
+          Already activated? <a href="/cook/login" class="text-info hover:underline">Sign in here</a>
         </p>
       </div>
     </div>
@@ -99,7 +99,7 @@
               timer: 2000,
               showConfirmButton: false
             }).then(() => {
-              window.location.href = '/view/cooks/Login_cooks.html';
+              window.location.href = '/cook/login';
             });
           } else {
             const errorText = await response.text();
