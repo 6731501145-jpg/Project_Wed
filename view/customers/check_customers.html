@@ -34,7 +34,7 @@
         <span class="flex-1 min-w-max text-center text-sm font-semibold text-white rounded-full px-5 py-2 cursor-default" style="background-color: #1ac8db">
           check
         </span>
-        <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/customer/peyment" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           payment
         </a>
       </div>
@@ -53,133 +53,97 @@
     </div>
 
     <script>
-      async function renderOrders() {
+     async function renderOrders() {
         const el = document.getElementById("orderList");
         const tableBadge = document.getElementById("tableBadge");
-        
-        // ดึงเลขโต๊ะจากที่ลูกค้า Login เข้ามา
-        let tableNumber = sessionStorage.getItem("table");
-
-        if (!tableNumber) {
-          await syncSession();
-          tableNumber = sessionStorage.getItem("table");
-        }
-
-        if (!tableNumber) {
-          el.innerHTML = `
-            <div class="text-center py-16 text-base-content/40">
-              <p class="text-sm text-error">Please login first.</p>
-              <button class="btn btn-sm mt-4" onclick="window.location.href='/view/customers/Login_customers.html'">Go to Login</button>
-            </div>`;
-          return;
-        }
-
-        tableBadge.innerText = `Table ${tableNumber}`;
 
         try {
-          // ถ้า session cookie ยังอยู่แต่ sessionStorage หาย ให้ลอง sync
-          if (!sessionStorage.getItem("username")) {
-            await syncSession();
-          }
-          // ส่ง request ไปหา API เช็คสถานะอาหารของโต๊ะนี้
-          const response = await fetch(`http://localhost:3000/customers/orders`, {
-            credentials: "include",
-          });
-          
-          // if (response.status === 401) {
-          //   window.location.href = '/view/customers/Login_customers.html';
-          //   return;
-          // }
+            // 1. ดึงข้อมูล Session จาก Server เพื่อเอาเลขโต๊ะ
+            const sessionRes = await fetch(`http://localhost:3000/customers/session`, { 
+                credentials: "include" 
+            });
 
-          if (response.ok) {
-            const orders = await response.json();
-
-            if (!orders || orders.length === 0) {
-              el.innerHTML = `
-                <div class="text-center py-16 text-base-content/40">
-                  <div class="text-5xl mb-3">📋</div>
-                  <p class="text-sm">No orders yet. Let's order some food!</p>
-                </div>`;
-              return;
+            if (!sessionRes.ok) {
+                // ถ้าไม่มี Session หรือหมดอายุ ให้เด้งไปหน้า Login
+                window.location.href = '/view/customers/Login_customers.html';
+                return;
             }
 
-            // นำข้อมูลที่ได้จากฐานข้อมูลมาโชว์บนจอ
-            el.innerHTML = orders.map((o) => {
-              // ตกแต่งสถานะและสีให้สื่อความหมาย
-              let statusText = "";
-              let statusColorClass = "";
+            const sessionData = await sessionRes.json();
+            const tableNumber = sessionData.table;
 
-              switch(o.status) {
-                case "pending":
-                  statusText = "⏳ Pending";
-                  statusColorClass = "text-base-content/60";
-                  break;
-                case "cooking":
-                  statusText = "🔥 Cooking";
-                  statusColorClass = "text-warning";
-                  break;
-                case "serving":
-                case "completed":
-                  statusText = "✅ Served";
-                  statusColorClass = "text-success";
-                  break;
-                default:
-                  statusText = o.status;
-                  statusColorClass = "text-base-content";
-              }
+            // แสดงเลขโต๊ะบน Badge
+            tableBadge.innerText = `Table ${tableNumber}`;
+            tableBadge.style.display = "inline-flex";
 
-              return `
-                <div class="card bg-base-200 rounded-2xl shadow-sm">
-                  <div class="card-body flex-row items-center justify-between p-4 md:p-5">
-                    <span class="font-semibold text-sm md:text-base">${o.menu_name || o.name || ''}</span>
-                    <span class="font-bold text-sm ${statusColorClass}">
-                      ${statusText}
-                    </span>
-                  </div>
-                </div>
-              `;
-            }).join("");
+            // 2. ดึงรายการอาหารของโต๊ะนี้
+            const orderRes = await fetch(`http://localhost:3000/customers/orders`, {
+                credentials: "include",
+            });
 
-          } else {
-            el.innerHTML = `<p class="text-center text-error mt-10">Error fetching data</p>`;
-          }
+            if (orderRes.ok) {
+                const orders = await orderRes.json();
+
+                if (!orders || orders.length === 0) {
+                    el.innerHTML = `
+                        <div class="text-center py-16 text-base-content/40">
+                            <div class="text-5xl mb-3">📋</div>
+                            <p class="text-sm">No orders yet. Let's order some food!</p>
+                        </div>`;
+                    return;
+                }
+
+                // Render รายการอาหาร
+                el.innerHTML = orders.map((o) => {
+                    let statusText = "";
+                    let statusColorClass = "";
+
+                    switch(o.status) {
+                        case "pending":
+                            statusText = "⏳ Pending";
+                            statusColorClass = "text-base-content/60";
+                            break;
+                        case "cooking":
+                            statusText = "🔥 Cooking";
+                            statusColorClass = "text-warning";
+                            break;
+                        case "serving":
+                        case "completed":
+                            statusText = "✅ Served";
+                            statusColorClass = "text-success";
+                            break;
+                        default:
+                            statusText = o.status;
+                            statusColorClass = "text-base-content";
+                    }
+
+                    return `
+                        <div class="card bg-base-200 rounded-2xl shadow-sm">
+                            <div class="card-body flex-row items-center justify-between p-4">
+                                <span class="font-semibold text-sm">${o.menu_name || o.name || ''}</span>
+                                <span class="font-bold text-sm ${statusColorClass}">${statusText}</span>
+                            </div>
+                        </div>`;
+                }).join("");
+            }
         } catch (error) {
-          console.error("Error fetching orders:", error);
-          // ป้องกันไม่ให้ขึ้น Error รัวๆ ถ้าระบบยังโหลดอยู่
-          if(el.innerHTML === "") {
-             el.innerHTML = `<p class="text-center text-error mt-10">Cannot connect to server.</p>`;
-          }
+            console.error("Fetch Error:", error);
         }
-      }
+    }
 
-      async function syncSession() {
-        try {
-          const res = await fetch(`http://localhost:3000/customers/session`, { credentials: "include" });
-          if (res.ok) {
-            const data = await res.json();
-            sessionStorage.setItem("username", data.username || "");
-            sessionStorage.setItem("table", data.table);
-            sessionStorage.setItem("customer_id", data.customer_id);
-          } else if (res.status === 401) {
-            // stay, renderOrders will redirect
-          }
-        } catch (e) {}
-      }
-
-      function blockBack() {
+    function blockBack() {
         history.pushState(null, "", location.href);
         window.addEventListener("popstate", () => {
-          history.pushState(null, "", location.href);
+            history.pushState(null, "", location.href);
         });
-      }
+    }
 
-      // 1. ให้ฟังก์ชันทำงานทันทีที่โหลดหน้าเว็บเสร็จ
-      window.onload = () => {
+    window.onload = () => {
         blockBack();
         renderOrders();
-        // 2. ดึงข้อมูลใหม่ทุกๆ 5 วินาที (5000 มิลลิวินาที) เพื่อให้ลูกค้าเห็นอัปเดตแบบเรียลไทม์
+        // อัปเดตข้อมูลอัตโนมัติทุก 5 วินาที
         setInterval(renderOrders, 5000);
-      };
+    };
     </script>
   </body>
 </html>

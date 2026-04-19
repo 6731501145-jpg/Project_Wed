@@ -28,10 +28,10 @@
         <a href="/customers/cart" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           cart
         </a>
-        <a href="/view/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/customer/OpenOrder" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           check
         </a>
-        <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/customer/peyment" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           payment
         </a>
       </div>
@@ -56,141 +56,148 @@
 
 <script>
   const API_BASE = 'http://localhost:3000';
-  let username = sessionStorage.getItem('username');
+let products = [];
+let cart = [];
+let cartKey = ''; // จะถูกกำหนดค่าหลังจากรู้ชื่อ username จาก API
 
-  let cartKey = `customer_cart_${username}`;
-  let products = [];
-  let cart = (JSON.parse(localStorage.getItem(cartKey) || '[]'))
-    .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
+document.addEventListener('DOMContentLoaded', () => {
+  blockBack();
+  initPage();
+});
 
-  document.addEventListener('DOMContentLoaded', () => {
-    blockBack();
-    (async () => {
-      await syncSession();
-      username = sessionStorage.getItem('username');
-      if (!username) {
-        window.location.href = '/view/customers/Login_customers.html';
-        return;
-      }
-      cartKey = `customer_cart_${username}`;
-      cart = (JSON.parse(localStorage.getItem(cartKey) || '[]'))
-        .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
-      fetchProducts();
-    })();
-  });
-
-  async function syncSession() {
-    if (sessionStorage.getItem('username') && sessionStorage.getItem('table')) return;
-    try {
-      const res = await fetch(`${API_BASE}/customers/session`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        sessionStorage.setItem('username', data.username || '');
-        sessionStorage.setItem('table', data.table);
-        sessionStorage.setItem('customer_id', data.customer_id);
-      } else if (res.status === 401) {
-        window.location.href = '/view/customers/Login_customers.html';
-      }
-    } catch (e) {
-      // ignore, จะถูก redirect ตอนสั่งซื้อถ้า 401
-    }
-  }
-
-  // กันกดย้อนกลับ
-  function blockBack() {
-    history.pushState(null, '', location.href);
-    window.addEventListener('popstate', () => {
-      history.pushState(null, '', location.href);
-    });
-  }
-
-  async function fetchProducts(keyword = '') {
-    try {
-      const url = keyword.trim()
-        ? `${API_BASE}/customers/search?name=${encodeURIComponent(keyword)}`
-        : `${API_BASE}/customers/products`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Cannot load menu');
-      products = await res.json();
-      renderProducts();
-    } catch (err) {
-      document.querySelector('#product_display').innerHTML = `
-        <div class="col-span-full text-center py-10 text-red-500">Failed to load menu, please try again.</div>
-      `;
-      console.error(err);
-    }
-  }
-
-  function renderProducts() {
-    if (!products || products.length === 0) {
-      document.querySelector('#product_display').innerHTML = `
-        <div class="col-span-full text-center py-10 text-gray-500">Menu not found.</div>
-      `;
+async function initPage() {
+  try {
+    // 1. ดึงข้อมูล Session จาก Server แทนการใช้ sessionStorage
+    const res = await fetch(`${API_BASE}/customers/session`, { credentials: 'include' });
+    
+    if (!res.ok) {
+      // ถ้าไม่มี Session (401) ให้เด้งไปหน้า Login
+      window.location.href = '/view/customers/Login_customers.html';
       return;
     }
 
-    const cards = products.map((product) => {
-      const currentQty = getQty(product.id);
-      const imageSrc = product.image?.startsWith('http')
-        ? product.image
-        : `/view/${product.image || ''}`;
+    const data = await res.json();
+    const username = data.username;
 
-      return `
-        <div class="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-100">
-          <div class="bg-slate-200 h-40 rounded-lg flex justify-center items-center mb-4 overflow-hidden">
-            <img class="w-full h-full object-cover" src="${imageSrc}" alt="${product.name}">
-          </div>
-          <div class="flex justify-between items-center mb-4">
-            <span class="text-lg font-semibold">${product.name}</span>
-            <span class="text-lg font-semibold">${product.price} baht</span>
-          </div>
-          <div class="flex justify-center">
-            <div class="bg-white rounded-full px-6 py-2 flex items-center gap-6 shadow-sm border border-gray-100">
-              <button onclick="changeCount(${product.id}, -1)" class="text-cyan-500 text-xl font-bold hover:text-black">-</button>
-              <span id="count-${product.id}" class="font-bold min-w-[20px] text-center">${currentQty}</span>   
-              <button onclick="changeCount(${product.id}, 1)" class="text-cyan-500 text-xl font-bold hover:text-black">+</button>
-            </div>
+    // 2. ตั้งค่า Cart Key โดยใช้ชื่อจาก Database
+    cartKey = `customer_cart_${username}`;
+    
+    // 3. โหลดข้อมูลตะกร้าจาก LocalStorage
+    const localData = localStorage.getItem(cartKey);
+    cart = (JSON.parse(localData || '[]'))
+      .map(item => ({ ...item, qty: item.qty ?? item.amount ?? 0 }));
+
+    // 4. โหลดสินค้ามาแสดง
+    fetchProducts();
+
+  } catch (e) {
+    console.error("Init Error:", e);
+    // กรณีเชื่อมต่อ Server ไม่ได้
+    document.querySelector('#product_display').innerHTML = `
+      <div class="col-span-full text-center py-10 text-red-500">Connection error. Please try again.</div>
+    `;
+  }
+}
+
+// ลบฟังก์ชัน syncSession เดิมออก เพราะเรายุบรวมไปใน initPage แล้ว
+
+// กันกดย้อนกลับ
+function blockBack() {
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', () => {
+    history.pushState(null, '', location.href);
+  });
+}
+
+async function fetchProducts(keyword = '') {
+  try {
+    const url = keyword.trim()
+      ? `${API_BASE}/customers/search?name=${encodeURIComponent(keyword)}`
+      : `${API_BASE}/customers/products`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Cannot load menu');
+    products = await res.json();
+    renderProducts();
+  } catch (err) {
+    document.querySelector('#product_display').innerHTML = `
+      <div class="col-span-full text-center py-10 text-red-500">Failed to load menu, please try again.</div>
+    `;
+    console.error(err);
+  }
+}
+
+function renderProducts() {
+  if (!products || products.length === 0) {
+    document.querySelector('#product_display').innerHTML = `
+      <div class="col-span-full text-center py-10 text-gray-500">Menu not found.</div>
+    `;
+    return;
+  }
+
+  const cards = products.map((product) => {
+    const currentQty = getQty(product.id);
+    const imageSrc = product.image?.startsWith('http')
+      ? product.image
+      : `/view/${product.image || ''}`;
+
+    return `
+      <div class="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="bg-slate-200 h-40 rounded-lg flex justify-center items-center mb-4 overflow-hidden">
+          <img class="w-full h-full object-cover" src="${imageSrc}" alt="${product.name}">
+        </div>
+        <div class="flex justify-between items-center mb-4">
+          <span class="text-lg font-semibold">${product.name}</span>
+          <span class="text-lg font-semibold">${product.price} baht</span>
+        </div>
+        <div class="flex justify-center">
+          <div class="bg-white rounded-full px-6 py-2 flex items-center gap-6 shadow-sm border border-gray-100">
+            <button onclick="changeCount(${product.id}, -1)" class="text-cyan-500 text-xl font-bold hover:text-black">-</button>
+            <span id="count-${product.id}" class="font-bold min-w-[20px] text-center">${currentQty}</span>   
+            <button onclick="changeCount(${product.id}, 1)" class="text-cyan-500 text-xl font-bold hover:text-black">+</button>
           </div>
         </div>
-      `;
-    }).join('');
+      </div>
+    `;
+  }).join('');
 
-    document.querySelector('#product_display').innerHTML = cards;
-  }
+  document.querySelector('#product_display').innerHTML = cards;
+}
 
-  // ฟังก์ชันดักจับการพิมพ์ในช่อง Search
-  function searchProduct() {
-    const text = document.getElementById('search_input').value;
-    fetchProducts(text);
-  }
+function searchProduct() {
+  const text = document.getElementById('search_input').value;
+  fetchProducts(text);
+}
 
-  function getQty(id) {
-    const item = cart.find((c) => c.id === id);
-    return item ? item.qty : 0;
-  }
+function getQty(id) {
+  const item = cart.find((c) => c.id === id);
+  return item ? item.qty : 0;
+}
 
-  function changeCount(productId, amount) {
-    const product = products.find((p) => p.id === productId);
-    if (!product) return;
+function changeCount(productId, amount) {
+  const product = products.find((p) => p.id === productId);
+  if (!product) return;
 
-    const existing = cart.find((c) => c.id === productId);
-    const newQty = (existing ? existing.qty : 0) + amount;
+  const existing = cart.find((c) => c.id === productId);
+  const newQty = (existing ? existing.qty : 0) + amount;
 
-    if (newQty <= 0) {
-      cart = cart.filter((c) => c.id !== productId);
+  if (newQty <= 0) {
+    cart = cart.filter((c) => c.id !== productId);
+  } else {
+    if (existing) {
+      existing.qty = newQty;
     } else {
-      if (existing) {
-        existing.qty = newQty;
-      } else {
-        cart.push({ id: product.id, name: product.name, price: product.price, image: product.image, qty: newQty });
-      }
+      cart.push({ id: product.id, name: product.name, price: product.price, image: product.image, qty: newQty });
     }
-
-    localStorage.setItem(cartKey, JSON.stringify(cart));
-
-    const counter = document.getElementById(`count-${productId}`);
-    if (counter) counter.innerText = Math.max(newQty, 0);
   }
+
+  // บันทึกตะกร้าลง LocalStorage โดยใช้ cartKey ที่ได้จาก API
+  if (cartKey) {
+    localStorage.setItem(cartKey, JSON.stringify(cart));
+  }
+
+  const counter = document.getElementById(`count-${productId}`);
+  if (counter) counter.innerText = Math.max(newQty, 0);
+}
 </script>
 
 </body>

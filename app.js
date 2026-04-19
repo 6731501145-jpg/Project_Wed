@@ -333,23 +333,29 @@ app.get('/customers/tables', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-// ตรวจสอบ session ลูกค้า
+// --- 1. API ตรวจสอบ Session ---
 app.get('/customers/session', ensureCustomerSession, async (req, res) => {
     try {
+        // ใช้ req.session.customer_id ที่เก็บไว้ตอน Login
         const [rows] = await db.query(
             'SELECT username, table_id, customer_id FROM customer WHERE customer_id = ? LIMIT 1',
             [req.session.customer_id]
         );
+        
         if (rows.length === 0) return res.status(404).send('Not found');
+        
         res.json({
             customer_id: rows[0].customer_id,
             table: rows[0].table_id,
             username: rows[0].username
         });
     } catch (error) {
+        console.error('Session Error:', error);
         res.status(500).send('Server error');
     }
 });
+
+// --- 2. API Login ---
 app.post('/customers/login', async (req, res) => {
     try {
         const { username, table_number } = req.body;
@@ -358,33 +364,29 @@ app.post('/customers/login', async (req, res) => {
             return res.status(400).send('Missing data');
         }
 
-        // 🔥 เช็คโต๊ะก่อน
+        // เช็คสถานะโต๊ะ
         const [tables] = await db.query(
             'SELECT status FROM `table` WHERE table_id = ?',
             [table_number]
         );
 
-        if (tables.length === 0) {
-            return res.status(404).send('Table not found');
-        }
+        if (tables.length === 0) return res.status(404).send('Table not found');
+        if (tables[0].status === 'occupied') return res.status(400).send('Table already occupied');
 
-        if (tables[0].status === 'occupied') {
-            return res.status(400).send('Table already occupied');
-        }
-
-        // สร้าง customer
+        // บันทึกข้อมูลลูกค้า
         const [result] = await db.query(
             'INSERT INTO customer (username, table_id, is_paid, created_at) VALUES (?, ?, 0, NOW())',
             [username, table_number]
         );
 
-        // mark โต๊ะ
+        // อัปเดตสถานะโต๊ะ
         await db.query(
             'UPDATE `table` SET status = "occupied" WHERE table_id = ?',
             [table_number]
         );
 
-        req.session.user_id = result.insertId; 
+        // ✅ เก็บข้อมูลลง Session (ใช้ชื่อ customer_id ให้ตรงกับ API session)
+        req.session.customer_id = result.insertId; 
         req.session.username = username;
         req.session.table_id = table_number;
         req.session.role = 'customer';
@@ -392,6 +394,7 @@ app.post('/customers/login', async (req, res) => {
         res.send('/customers/menu');
 
     } catch (error) {
+        console.error('Login Error:', error);
         res.status(500).send('Server error');
     }
 });
@@ -942,6 +945,40 @@ app.get('/api/admin/order/history', async (req, res) => {
 });
 
 // --- โหลดหน้า HTML ---
+//หน้าหลักและ Login
+const isAuth = (req, res, next) => {
+    // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    if (req.session.role === 'admin') {
+        return res.redirect('/admin/dashboard');
+    } else if (req.session.role === 'cook') {
+        return res.redirect('/cook/dashboard');
+    } else if (req.session.role === 'customer') {
+        return res.redirect('/customers/menu');
+    }else {
+        return next();
+    }
+};
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get('/customers/login',isAuth, (req, res) => {
+    
+    res.sendFile(path.join(__dirname, 'view', 'customers', 'Login_customers.html'));
+});
+app.get('/cook/login',isAuth, (req, res) => {
+    
+    res.sendFile(path.join(__dirname, 'view', 'cooks', 'Login_cooks.html'));
+});
+app.get('/cook/register',isAuth, (req, res) => {
+    
+    res.sendFile(path.join(__dirname, 'view', 'cooks', 'register_cook.html'));
+});
+app.get('/admin/login',isAuth, (req, res) => {
+    
+    res.sendFile(path.join(__dirname, 'view', 'admin', 'Login_admin.html'));
+});
+
 //Customer
 const isAuthcustomer = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
@@ -955,25 +992,25 @@ const isAuthcustomer = (req, res, next) => {
         return res.redirect('/');
     }
 };
+
 app.use(express.static(path.join(__dirname, 'view')));
+
 app.get('/customers/menu', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'Menu_customers.html'));
 });
 app.get('/customers/cart', isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'capt_customers.html'));
 });
-
 app.get('/customer/OpenOrder',isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'check_customers.html'));
 });
 app.get('/customer/peyment',isAuthcustomer, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'customers', 'PAYMENT.html'));
 })
-//Cook
-
 app.get('/api/review/', (req, res) => { res.status(200).sendFile(path.join(__dirname, 'view', 'REVIEW.html')); });
-// ฟังก์ชันเช็คสิทธิ์แบบละเอียด
-const isAuth = (req, res, next) => {
+
+//Cook
+const isAuthcook = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
@@ -985,24 +1022,19 @@ const isAuth = (req, res, next) => {
         return res.redirect('/');
     }
 };
-// ใช้ isAdmin เข้ามาคั่นกลางก่อนจะส่งไฟล์
-app.get('/cook/dashboard', isAuth, (req, res) => {
+app.get('/cook/dashboard',isAuthcook, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'cooks', 'Dashdoard_cook.html'));
 });
-
-app.get('/cook/orderoper', isAuth, (req, res) => {
+app.get('/cook/orderoper',isAuthcook, (req, res) => {
     res.sendFile(path.join(__dirname, 'view', 'cooks', 'Order_cook.html'));
 });
-app.get('/', (req, res) => {
-    if (req.session.role === 'admin') {
-        return res.redirect('/admin/dashboard');
-    } else if (req.session.role === 'cook') {
-        return res.redirect('/cook/dashboard');
-    } else if (req.session.role === 'customer') {
-        return res.redirect('/customers/menu');
-    }
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get('/cooks/ordercook',isAuthcook, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'cooks', 'OrdeCooking_cook.html'));
 });
+app.get('/cooks/ordercooks',isAuthcook, (req, res) => {
+    res.sendFile(path.join(__dirname, 'view', 'cooks', 'OrdeCooking_cook2.html'));
+});
+
 //Admin
 const isAuthadmin = (req, res, next) => {
     // 1. สั่งห้ามเบราว์เซอร์เก็บ Cache หน้าจอนี้ (สำคัญมากสำหรับการก๊อปวางลิงก์)

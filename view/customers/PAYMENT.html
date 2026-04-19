@@ -33,10 +33,10 @@
         <a href="/customers/cart" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           cart
         </a>
-        <a href="/view/customers/check_customers.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
+        <a href="/customer/OpenOrder" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer">
           check
         </a>
-        <a href="/view/customers/PAYMENT.html" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
+        <a href="/customer/peyment" class="flex-1 min-w-max text-center text-sm font-medium text-base-content/50 rounded-full px-5 py-2 hover:bg-base-300 transition-colors cursor-pointer"
         style="background-color: #1ac8db">
           payment
         </a>
@@ -78,130 +78,155 @@
     </div>
     <script>
     const API_URL = 'http://localhost:3000/api';
-    let tableId = sessionStorage.getItem('table');
-    // ถ้า sessionStorage หาย ลอง sync จาก server
-    async function ensureSession() {
-        if (tableId) return true;
-        try {
-            const res = await fetch('http://localhost:3000/customers/session', { credentials: 'include' });
-            if (res.ok) {
-                const data = await res.json();
-                sessionStorage.setItem('table', data.table);
-                sessionStorage.setItem('username', data.username || '');
-                sessionStorage.setItem('customer_id', data.customer_id);
-                tableId = data.table;
-                return true;
-            }
-        } catch (e) {}
-        // alert('Please login first.');
-        // window.location.href = '/view/customers/Login_customers.html';
-        // return false;
+const AUTH_URL = 'http://localhost:3000/customers/session';
+let currentTableId = null; // ใช้ตัวแปรนี้แทน sessionStorage
+
+// 1. ฟังก์ชันเช็ค Session และดึงข้อมูลโต๊ะจาก Server
+async function getSessionData() {
+    try {
+        const res = await fetch(AUTH_URL, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            return data; // ส่งคืนข้อมูล { table: ..., username: ... }
+        }
+    } catch (e) {
+        console.error("Session sync failed:", e);
+    }
+    return null;
+}
+
+// 2. ฟังก์ชันหลักในการโหลดข้อมูลหน้า Checkout
+async function initializeCheckout() {
+    blockBack();
+    
+    const session = await getSessionData();
+    if (!session || !session.table) {
+        // ถ้าไม่มี session ให้เด้งไปหน้า Login
+        window.location.href = '/view/customers/Login_customers.html';
+        return;
     }
 
-    // เปลี่ยนข้อความ TABLE ทั้งหมดบนหน้า
+    currentTableId = session.table;
+
+    // เปลี่ยนข้อความ TABLE บนหน้าจอ
     document.querySelectorAll('[data-table-text]').forEach(el => {
-        el.textContent = `TABLE ${tableId}`;
+        el.textContent = `TABLE ${currentTableId}`;
     });
 
-    // โหลดข้อมูลรายการที่ยังไม่ได้จ่ายเงิน
-    document.addEventListener('DOMContentLoaded', async () => {
-        blockBack();
-        const ok = await ensureSession();
-        if (!ok) return;
-        try {
-            const response = await fetch(`${API_URL}/checkout/${tableId}`, {
-                credentials: 'include'
+    // โหลดรายการอาหารที่สั่ง
+    await loadCheckoutItems();
+}
+
+// 3. ฟังก์ชันโหลดรายการที่ยังไม่ได้จ่ายเงิน
+async function loadCheckoutItems() {
+    const orderList = document.getElementById('order-list');
+    try {
+        const response = await fetch(`${API_URL}/checkout/${currentTableId}`, {
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Cannot load checkout data');
+
+        const data = await response.json();
+        orderList.innerHTML = '';
+
+        const grouped = {};
+        (data.items || []).forEach(item => {
+            const key = item.menuName;
+            if (!grouped[key]) grouped[key] = { name: key, price: Number(item.price) || 0, qty: 0 };
+            const addQty = Number(item.amount) || 1;
+            grouped[key].qty += addQty;
+        });
+
+        const rows = Object.values(grouped);
+        if (rows.length === 0) {
+            orderList.innerHTML = '<div class="order-row"><span class="col-menu">No pending items</span></div>';
+        } else {
+            rows.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'order-row';
+                row.innerHTML = `
+                    <span class="col-menu">${item.name}</span>
+                    <span class="col-price">${item.price} ฿</span>
+                    <span class="col-number">x${item.qty}</span>
+                `;
+                orderList.appendChild(row);
             });
-            // if (response.status === 401) {
-            //     alert('Session expired, please login again.');
-            //     window.location.href = '/view/customers/Login_customers.html';
-            //     return;
-            // }
-            if (!response.ok) throw new Error('Cannot load checkout data');
-
-            const data = await response.json();
-            const orderList = document.getElementById('order-list');
-            orderList.innerHTML = '';
-
-            // กลุ่มรายการให้แสดงจำนวนถูกต้อง (รองรับทั้งกรณี API ส่ง amount มาแล้วหรือเป็นรายการย่อย)
-            const grouped = {};
-            (data.items || []).forEach(item => {
-                const key = item.menuName;
-                if (!grouped[key]) grouped[key] = { name: key, price: Number(item.price) || 0, qty: 0 };
-                const addQty = Number(item.amount) || 1;
-                grouped[key].qty += addQty;
-            });
-
-            const rows = Object.values(grouped);
-            if (rows.length === 0) {
-                orderList.innerHTML = '<div class="order-row"><span class="col-menu">No pending items</span></div>';
-            } else {
-                rows.forEach(item => {
-                    const row = document.createElement('div');
-                    row.className = 'order-row';
-                    row.innerHTML = `<span class="col-menu">${item.name}</span><span class="col-price">${item.price} ฿</span><span class="col-number">x${item.qty}</span>`;
-                    orderList.appendChild(row);
-                });
-            }
-
-            document.getElementById('modal-total-price').innerText = data.totalPrice ?? 0;
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            document.getElementById('order-list').innerHTML = '<div class="order-row"><span class="col-menu text-red-500">Cannot load data</span></div>';
         }
-    });
+
+        document.getElementById('modal-total-price').innerText = data.totalPrice ?? 0;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        orderList.innerHTML = '<div class="order-row"><span class="col-menu text-red-500">Cannot load data</span></div>';
+    }
+}
+
+// 4. การจัดการ Modal และปุ่มจ่ายเงิน
+document.addEventListener('DOMContentLoaded', () => {
+    initializeCheckout();
 
     // เปิด Modal
-    document.querySelector('.btn-checkout').addEventListener('click', function(e) {
-        e.preventDefault(); 
-        document.getElementById('checkout-modal').style.display = 'flex';
-    });
-
-    // ปิด Modal
-    document.getElementById('close-modal').addEventListener('click', function() {
-        document.getElementById('checkout-modal').style.display = 'none';
-    });
-
-    // กดจ่ายเงิน -> ยิง API -> ไปหน้า REVIEW.html
-    document.getElementById('btn-confirm-pay').addEventListener('click', async function() {
-        this.innerText = 'PROCESSING...';
-        this.style.opacity = '0.7';
-
-        try {
-            const response = await fetch(`${API_URL}/pay`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ tableId })
-            });
-            // if (response.status === 401) {
-            //     alert('Session expired, please login again.');
-            //     window.location.href = '/view/customers/Login_customers.html';
-            //     return;
-            // }
-            const data = await response.json();
-            
-            if(data.success) {
-                window.location.href = 'REVIEW.html'; // ไปหน้า Review
-            } else {
-                alert(data.message || data.error || 'Payment failed');
-                this.innerText = 'CONFIRM PAYMENT';
-                this.style.opacity = '1';
-            }
-        } catch (error) {
-            console.error("Payment error:", error);
-            alert("เกิดข้อผิดพลาดในการชำระเงิน");
-            this.innerText = 'CONFIRM PAYMENT';
-            this.style.opacity = '1';
-        }
-    });
-
-    function blockBack() {
-        history.pushState(null, "", location.href);
-        window.addEventListener("popstate", () => {
-            history.pushState(null, "", location.href);
+    const btnCheckout = document.querySelector('.btn-checkout');
+    if (btnCheckout) {
+        btnCheckout.addEventListener('click', (e) => {
+            e.preventDefault(); 
+            document.getElementById('checkout-modal').style.display = 'flex';
         });
     }
+
+    // ปิด Modal
+    const btnCloseModal = document.getElementById('close-modal');
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', () => {
+            document.getElementById('checkout-modal').style.display = 'none';
+        });
+    }
+
+    // ยืนยันการจ่ายเงิน
+    const btnConfirmPay = document.getElementById('btn-confirm-pay');
+    if (btnConfirmPay) {
+        btnConfirmPay.addEventListener('click', async function() {
+            this.innerText = 'PROCESSING...';
+            this.disabled = true;
+            this.style.opacity = '0.7';
+
+            try {
+                const response = await fetch(`${API_URL}/pay`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ tableId: currentTableId })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = 'REVIEW.html'; 
+                } else {
+                    alert(data.message || 'Payment failed');
+                    resetPayButton(this);
+                }
+            } catch (error) {
+                console.error("Payment error:", error);
+                alert("เกิดข้อผิดพลาดในการชำระเงิน");
+                resetPayButton(this);
+            }
+        });
+    }
+});
+
+function resetPayButton(btn) {
+    btn.innerText = 'CONFIRM PAYMENT';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+}
+
+function blockBack() {
+    history.pushState(null, "", location.href);
+    window.addEventListener("popstate", () => {
+        history.pushState(null, "", location.href);
+    });
+}
     </script>
 </body>
 </html>
