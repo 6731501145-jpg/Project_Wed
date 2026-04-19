@@ -105,7 +105,6 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// Register Cook
 // Register Cook (ทำหน้าที่เป็น Activate Account โดยอิงจากข้อมูลที่ Admin สร้างไว้)
 app.post('/cooks/register', async (req, res) => {
     try {
