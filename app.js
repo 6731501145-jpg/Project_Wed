@@ -960,7 +960,7 @@ const isAuth = (req, res, next) => {
         return next();
     }
 };
-app.get('/', (req, res) => {
+app.get('/',isAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.get('/customers/login',isAuth, (req, res) => {
