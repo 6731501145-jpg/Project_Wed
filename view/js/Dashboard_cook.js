@@ -222,19 +222,7 @@ function logout() {
     // วิ่งไปที่ Route logout โดยตรง Browser จะจัดการเปลี่ยนหน้าตาม res.redirect('/') เอง
     window.location.href = '/logout';
 }
-fetch('/api/get-orders')
-    .then(response => {
-        if (response.status === 401 || response.status === 403) {
-            // ถ้า Server บอกว่าไม่มีสิทธิ์ หรือ Session หมด
-            window.location.href = '/'; 
-            return;
-        }
-        return response.json();
-    })
-    .then(data => {
-        // แสดงผลข้อมูลตามปกติ
-    });
-    // ตรวจสอบ Session ทุกครั้งที่โหลดหน้า
+// ตรวจสอบ Session ทุกครั้งที่โหลดหน้า
 async function checkAuth() {
     try {
         const res = await fetch('/user/info');

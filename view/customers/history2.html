@@ -93,6 +93,11 @@
                         window.location.href = '/view/customers/Login_customers.html';
                         return;
                     }
+                    if (response.status === 403) {
+                        alert('Please submit a review first.');
+                        window.location.replace('/customers/review');
+                        return;
+                    }
 
                     if (!response.ok) {
                         document.getElementById('receipt-items').innerHTML = '<span style="color:red;">ไม่พบใบเสร็จ</span>';
@@ -214,5 +219,6 @@
             });
         }
     </script>
+    <script src="/js/no-back.js"></script>
 </body>
 </html>

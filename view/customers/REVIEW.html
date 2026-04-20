@@ -33,7 +33,7 @@
     </div>
 
     <div class="checkout-section">
-        <a href="/view/customers/history2.html" id="btn-submit-review" class="btn-checkout">SUBMIT & CHECK OUT</a>
+        <a href="/customers/history" id="btn-submit-review" class="btn-checkout">SUBMIT & CHECK OUT</a>
     </div>
 
     <script>
@@ -87,11 +87,16 @@
             document.getElementById('btn-submit-review').addEventListener('click', async (e) => {
                 e.preventDefault(); // ป้องกันไม่ให้ลิงก์เปลี่ยนหน้าทันที
 
-                const reviewText = document.getElementById('review-text').value;
+                const reviewText = document.getElementById('review-text').value.trim();
 
                 // ตรวจสอบว่าลูกค้าให้ดาวหรือยัง (ใน Requirement บอกว่า Optional แต่ถ้าบังคับให้กดดาวค่อยเปิดใช้เงื่อนไขนี้ได้ครับ)
                 if (currentRating === 0) {
                     alert('กรุณาให้คะแนนดาวก่อนนะครับ!');
+                    return;
+                }
+
+                if (!reviewText) {
+                    alert('กรุณาเขียนรีวิวก่อนนะครับ!');
                     return;
                 }
 
@@ -114,6 +119,12 @@
                         return;
                     }
 
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        alert(errorText || 'เกิดข้อผิดพลาดในการส่งรีวิว');
+                        return;
+                    }
+
                     const result = await response.json();
 
                     if (result.success) {
@@ -124,7 +135,7 @@
                         localStorage.setItem('savedComment', reviewText);
 
                         // ส่งรีวิวเสร็จ พาไปหน้าใบเสร็จ
-                        window.location.href = 'history2.html'; 
+                        window.location.replace('/customers/history');
                     }
                 } catch (error) {
                     console.error('Error submitting review:', error);
@@ -140,5 +151,6 @@
             });
         }
     </script>
+    <script src="/js/no-back.js"></script>
 </body>
 </html>

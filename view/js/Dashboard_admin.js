@@ -2,7 +2,7 @@ async function fetchAndRenderDashboard() {
     let start = new Date(selectedDateContext);
     let end = new Date(selectedDateContext);
 
-    if (currentFilterType === 'today') {
+    if (currentFilterType === 'today' || currentFilterType === 'day') {
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
     } else if (currentFilterType === 'month') {
@@ -62,6 +62,7 @@ async function fetchAndRenderDashboard() {
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_NAMES = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 let currentFilterType = 'today';
 let selectedDateContext = new Date();
@@ -71,13 +72,15 @@ const _today = new Date();
 let monthYear = _today.getFullYear();
 let weekViewMonth = _today.getMonth();
 let weekViewYear = _today.getFullYear();
+let dayViewMonth = _today.getMonth();
+let dayViewYear = _today.getFullYear();
 
 let currentRankingData = [];
 let currentRankingPage = 1;
 const RANKING_ITEMS_PER_PAGE = 10;
 
 function closeAll() {
-    ['main-menu', 'week-picker', 'month-picker'].forEach(id => document.getElementById(id).classList.remove('open'));
+    ['main-menu', 'day-picker', 'week-picker', 'month-picker'].forEach(id => document.getElementById(id).classList.remove('open'));
 }
 
 function toggleMain() {
@@ -89,7 +92,10 @@ function toggleMain() {
 
 function openSub(type) {
     closeAll();
-    if (type === 'week') {
+    if (type === 'day') {
+        renderDayGrid();
+        document.getElementById('day-picker').classList.add('open');
+    } else if (type === 'week') {
         renderWeekGrid();
         document.getElementById('week-picker').classList.add('open');
     } else if (type === 'month') {
@@ -98,6 +104,85 @@ function openSub(type) {
     } else {
         document.getElementById('main-menu').classList.add('open');
     }
+}
+
+function changeDayView(delta) {
+    dayViewMonth += delta;
+    if (dayViewMonth < 0) { dayViewMonth = 11; dayViewYear--; }
+    else if (dayViewMonth > 11) { dayViewMonth = 0; dayViewYear++; }
+    renderDayGrid();
+}
+
+function changeDayYearView(delta) {
+    dayViewYear += delta;
+    renderDayGrid();
+}
+
+function renderDayGrid() {
+    document.getElementById('day-view-label').textContent = `${MONTH_NAMES[dayViewMonth]} ${dayViewYear}`;
+    const grid = document.getElementById('day-grid');
+    grid.innerHTML = '';
+
+    // Day headers (Mon-Sun)
+    DAY_NAMES.forEach(name => {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = name;
+        grid.appendChild(header);
+    });
+
+    // First day of month
+    const firstDay = new Date(dayViewYear, dayViewMonth, 1);
+    let startDay = firstDay.getDay(); // 0=Sun, 1=Mon...
+    startDay = startDay === 0 ? 6 : startDay - 1; // Convert to Mon=0
+
+    // Days in month
+    const daysInMonth = new Date(dayViewYear, dayViewMonth + 1, 0).getDate();
+
+    // Today reference
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+    // Empty cells before first day
+    for (let i = 0; i < startDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell empty';
+        grid.appendChild(cell);
+    }
+
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+        cell.textContent = d;
+
+        const cellDateStr = `${dayViewYear}-${dayViewMonth}-${d}`;
+
+        // Highlight today
+        if (cellDateStr === todayStr) {
+            cell.classList.add('today');
+        }
+
+        // Highlight selected day
+        if (currentFilterType === 'day' &&
+            selectedDateContext.getFullYear() === dayViewYear &&
+            selectedDateContext.getMonth() === dayViewMonth &&
+            selectedDateContext.getDate() === d) {
+            cell.classList.add('selected');
+        }
+
+        cell.onclick = () => selectDay(dayViewYear, dayViewMonth, d);
+        grid.appendChild(cell);
+    }
+}
+
+function selectDay(year, month, day) {
+    currentFilterType = 'day';
+    selectedDateContext = new Date(year, month, day);
+    const d = selectedDateContext;
+    document.getElementById('dropdown-label').textContent = `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+    closeAll();
+    fetchAndRenderDashboard();
 }
 
 function selectToday() {
@@ -217,6 +302,30 @@ function isDateMatch(dbDate) {
     return false;
 }
 
+function escapeAttr(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function getImageSrc(imageUrl) {
+    if (!imageUrl) return '/view/food.png';
+    if (imageUrl.startsWith('http') || imageUrl.startsWith('/') || imageUrl.startsWith('data:')) {
+        return imageUrl;
+    }
+    return `/view/${imageUrl}`;
+}
+
+function renderMenuImage(imageUrl, sizeClass = 'w-10 h-10') {
+    return `<img src="${escapeAttr(getImageSrc(imageUrl))}" alt="menu image"
+                class="${sizeClass} object-cover rounded-xl"
+                onerror="this.src='/view/food.png'" />`;
+}
+
 function renderRankingPreview(rankingData) {
     const container = document.getElementById('dashboard-ranking-preview');
     container.innerHTML = '';
@@ -231,7 +340,7 @@ function renderRankingPreview(rankingData) {
         const html = `
                             <div class="bg-white p-3 md:p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-gray-50">
                                 <div class="w-10 h-10 rounded-full ${badgeClass} border flex items-center justify-center font-bold text-lg shrink-0">${index + 1}</div>
-                                <div class="text-2xl">${item.image}</div>
+                                <div class="shrink-0">${renderMenuImage(item.image, 'w-10 h-10')}</div>
                                 <div class="flex-1 overflow-hidden">
                                     <h4 class="font-bold text-gray-800 text-sm md:text-base truncate">${item.name}</h4>
                                 </div>
@@ -295,7 +404,7 @@ function renderRankingPage() {
         const html = `
                             <div class="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 md:gap-6 hover:shadow-md transition-shadow">
                                 ${rankBadge}
-                                <div class="text-4xl md:text-5xl bg-gray-50 rounded-xl p-2 md:p-3">${item.image}</div>
+                                <div class="bg-gray-50 rounded-xl p-2 md:p-3 shrink-0">${renderMenuImage(item.image, 'w-10 h-10 md:w-12 md:h-12')}</div>
                                 <div class="flex-1">
                                     <h3 class="text-lg md:text-2xl font-bold text-gray-800">${item.name}</h3>
                                     <p class="text-gray-500 text-sm md:text-base mt-1">Total ordered</p>

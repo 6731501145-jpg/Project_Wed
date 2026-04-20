@@ -156,7 +156,7 @@
 
                         // 🟢 ใช้ replace() แทน href 
                         // หน้า REVIEW จะหายไปจากประวัติเบราว์เซอร์ พอกด Back จะไม่มาโผล่หน้านี้
-                        window.location.replace('/api/receipt/');
+                        window.location.replace('/customers/history');
                     }
                 } else {
                     // ✅ 400/500 — backend ส่ง plain text ต้องอ่านแบบ text() ไม่ใช่ json()
@@ -175,6 +175,7 @@
             }
         });
     </script>
+    <script src="/js/no-back.js"></script>
 </body>
 
 </html>
